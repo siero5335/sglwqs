@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Comparison with Other Methods</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Comparison with Other Methods</h1>
+<h3 class="subtitle">SGL-WQS vs WQS vs qgcomp vs groupWQS</h3>
+
+
+
+<div id="overview" class="section level2">
+<h2>Overview</h2>
+<p>This vignette compares SGL-WQS with established mixture methods.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Bidirectional</th>
+<th>Variable Selection</th>
+<th>Group Structure</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>WQS (gWQS)</td>
+<td>Yes (2-index)</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr class="even">
+<td>qgcomp</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td>groupWQS</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr class="even">
+<td><strong>SGL-WQS</strong></td>
+<td>Yes</td>
+<td><strong>Yes</strong></td>
+<td><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Common settings</strong>: Bootstrap = 500, Validation split =
+60/40</p>
+<hr />
+</div>
+<div id="comparison-1-wqs-vs-sgl-wqs-pcb-data" class="section level2">
+<h2>Comparison 1: WQS vs SGL-WQS (PCB Data)</h2>
+<p><strong>Data</strong>: <code>gWQS::wqs_data</code> (continuous
+outcome)</p>
+<div id="gwqs-2-index-model" class="section level3">
+<h3>gWQS (2-index model)</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(gWQS)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;wqs_data&quot;</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>PCBs <span class="ot">&lt;-</span> <span class="fu">names</span>(wqs_data)[<span class="fu">grepl</span>(<span class="st">&quot;^LBX&quot;</span>, <span class="fu">names</span>(wqs_data))]</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co"># 2-index model: positive AND negative directions</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>gwqs_fit <span class="ot">&lt;-</span> <span class="fu">gwqs</span>(</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>  yLBX <span class="sc">~</span> pwqs <span class="sc">+</span> nwqs,  <span class="co"># Both positive and negative WQS indices</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>  <span class="at">mix_name =</span> PCBs, </span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a>  <span class="at">data =</span> wqs_data, </span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>  <span class="at">q =</span> <span class="dv">10</span>, </span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>  <span class="at">validation =</span> <span class="fl">0.6</span>, </span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>  <span class="at">b =</span> <span class="dv">500</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a>  <span class="at">b1_pos =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>  <span class="at">rh =</span> <span class="dv">1</span>,</span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>  <span class="at">family =</span> <span class="st">&quot;gaussian&quot;</span>, </span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">2016</span></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a>)</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a><span class="fu">summary</span>(gwqs_fit)</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="fu">gwqs_barplot</span>(gwqs_fit)</span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="co"># Extract weights for comparison</span></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>weights_gwqs_pos <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>  <span class="at">variable =</span> gwqs_fit<span class="sc">$</span>final_weights<span class="sc">$</span>mix_name,</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a>  <span class="at">weight =</span> gwqs_fit<span class="sc">$</span>final_weights<span class="sc">$</span>mean_weight_p,</span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a>  <span class="at">direction =</span> <span class="st">&quot;Positive&quot;</span>,</span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">&quot;gWQS&quot;</span></span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a>)</span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a>weights_gwqs_neg <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a>  <span class="at">variable =</span> gwqs_fit<span class="sc">$</span>final_weights<span class="sc">$</span>mix_name,</span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a>  <span class="at">weight =</span> gwqs_fit<span class="sc">$</span>final_weights<span class="sc">$</span>mean_weight_n,</span>
+<span id="cb1-32"><a href="#cb1-32" tabindex="-1"></a>  <span class="at">direction =</span> <span class="st">&quot;Negative&quot;</span>,</span>
+<span id="cb1-33"><a href="#cb1-33" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">&quot;gWQS&quot;</span></span>
+<span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="sgl-wqs" class="section level3">
+<h3>SGL-WQS</h3>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(sglwqs)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">library</span>(future)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">10</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>sglwqs_fit <span class="ot">&lt;-</span> <span class="fu">sglwqs</span>(</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="at">X =</span> wqs_data[, PCBs],</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">y =</span> wqs_data<span class="sc">$</span>yLBX,</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="at">groups =</span> <span class="fu">list</span>(<span class="at">PCBs =</span> PCBs),</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="at">n_quantiles =</span> <span class="dv">10</span>, </span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>  <span class="at">bootstrap =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>  <span class="at">n_boot =</span> <span class="dv">500</span>,</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>  <span class="at">parallel =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>  <span class="at">validation =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>  <span class="at">train_prop =</span> <span class="fl">0.6</span>,</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">123</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>)</span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="fu">plan</span>(sequential)</span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co"># Results</span></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="fu">summary</span>(sglwqs_fit)</span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="fu">plot_weights</span>(sglwqs_fit)</span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="fu">inference_table</span>(sglwqs_fit)</span></code></pre></div>
+<hr />
+</div>
+</div>
+<div id="comparison-2-qgcomp-vs-sgl-wqs-metals-data" class="section level2">
+<h2>Comparison 2: qgcomp vs SGL-WQS (Metals Data)</h2>
+<p><strong>Data</strong>: <code>qgcomp::metals</code> (binary
+outcome)</p>
+<div id="qgcomp" class="section level3">
+<h3>qgcomp</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(qgcomp)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;metals&quot;</span>, <span class="at">package =</span> <span class="st">&quot;qgcomp&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>Xnm <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&#39;arsenic&#39;</span>, <span class="st">&#39;barium&#39;</span>, <span class="st">&#39;cadmium&#39;</span>, <span class="st">&#39;calcium&#39;</span>, <span class="st">&#39;chromium&#39;</span>, <span class="st">&#39;copper&#39;</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>         <span class="st">&#39;iron&#39;</span>, <span class="st">&#39;lead&#39;</span>, <span class="st">&#39;magnesium&#39;</span>, <span class="st">&#39;manganese&#39;</span>, <span class="st">&#39;mercury&#39;</span>, <span class="st">&#39;selenium&#39;</span>, </span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>         <span class="st">&#39;silver&#39;</span>, <span class="st">&#39;sodium&#39;</span>, <span class="st">&#39;zinc&#39;</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>qc_noboot <span class="ot">&lt;-</span> <span class="fu">qgcomp.glm.noboot</span>(</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  disease_state <span class="sc">~</span> ., </span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="at">expnms =</span> Xnm, </span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="at">data =</span> metals[, <span class="fu">c</span>(Xnm, <span class="st">&#39;disease_state&#39;</span>)], </span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">binomial</span>(), </span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>  <span class="at">q =</span> <span class="dv">4</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>)</span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>qc_noboot</span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="fu">plot</span>(qc_noboot)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>qgcomp_fit <span class="ot">&lt;-</span> <span class="fu">qgcomp.boot</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  disease_state <span class="sc">~</span> .,</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">data =</span> metals[, <span class="fu">c</span>(<span class="st">&quot;disease_state&quot;</span>, Xnm)],</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">family =</span> <span class="fu">binomial</span>(),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">q =</span> <span class="dv">10</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">B =</span> <span class="dv">500</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">123</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>)</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="fu">summary</span>(qgcomp_fit)</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="fu">plot</span>(qgcomp_fit)</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># Extract weights</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>weights_qgcomp <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>  <span class="at">variable =</span> <span class="fu">c</span>(<span class="fu">names</span>(qc_noboot<span class="sc">$</span>pos.weights), <span class="fu">names</span>(qc_noboot<span class="sc">$</span>neg.weights)),</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>  <span class="at">weight =</span> <span class="fu">c</span>(qc_noboot<span class="sc">$</span>pos.weights, qc_noboot<span class="sc">$</span>neg.weights),</span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>  <span class="at">direction =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="st">&quot;Positive&quot;</span>, <span class="fu">length</span>(qc_noboot<span class="sc">$</span>pos.weights)),</span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>                <span class="fu">rep</span>(<span class="st">&quot;Negative&quot;</span>, <span class="fu">length</span>(qc_noboot<span class="sc">$</span>neg.weights))),</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">&quot;qgcomp&quot;</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="sgl-wqs-1" class="section level3">
+<h3>SGL-WQS</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">10</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>sglwqs_fit2 <span class="ot">&lt;-</span> <span class="fu">sglwqs</span>(</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">X =</span> metals[, Xnm],</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">y =</span> metals<span class="sc">$</span>disease_state,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">family =</span> <span class="st">&quot;binomial&quot;</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">groups =</span> <span class="fu">list</span>(<span class="at">Metals =</span> Xnm),</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="at">n_quantiles =</span> <span class="dv">10</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  <span class="at">bootstrap =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="at">n_boot =</span> <span class="dv">500</span>,</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  <span class="at">parallel =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  <span class="at">validation =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="at">train_prop =</span> <span class="fl">0.6</span>,</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">123</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>)</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="fu">plan</span>(sequential)</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="fu">summary</span>(sglwqs_fit2)</span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a><span class="fu">plot_weights</span>(sglwqs_fit2)</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a><span class="fu">inference_table</span>(sglwqs_fit2)</span></code></pre></div>
+<hr />
+</div>
+</div>
+<div id="comparison-3-groupwqs-vs-sgl-wqs-multiple-groups" class="section level2">
+<h2>Comparison 3: groupWQS vs SGL-WQS (Multiple Groups)</h2>
+<p><strong>Data</strong>: <code>groupWQS::simdata</code> (binary
+outcome, 3 chemical groups)</p>
+<div id="groupwqs" class="section level3">
+<h3>groupWQS</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">library</span>(groupWQS)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">data</span>(<span class="st">&quot;simdata&quot;</span>, <span class="at">package =</span> <span class="st">&quot;groupWQS&quot;</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>PCBs_g <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;pcb_118&quot;</span>, <span class="st">&quot;pcb_138&quot;</span>, <span class="st">&quot;pcb_153&quot;</span>, <span class="st">&quot;pcb_180&quot;</span>, <span class="st">&quot;pcb_192&quot;</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>metals_g <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;as&quot;</span>, <span class="st">&quot;cu&quot;</span>, <span class="st">&quot;pb&quot;</span>, <span class="st">&quot;sn&quot;</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>pesticides <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;carbaryl&quot;</span>, <span class="st">&quot;propoxur&quot;</span>, <span class="st">&quot;methoxychlor&quot;</span>, <span class="st">&quot;diazinon&quot;</span>, <span class="st">&quot;chlorpyrifos&quot;</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>all_vars_g <span class="ot">&lt;-</span> <span class="fu">c</span>(PCBs_g, metals_g, pesticides)</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>group_list <span class="ot">&lt;-</span> <span class="fu">list</span>(PCBs_g, metals_g, pesticides)</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>X_gwqs <span class="ot">&lt;-</span> <span class="fu">make.X</span>(simdata, <span class="at">num.groups =</span> <span class="dv">3</span>, <span class="at">groups =</span> group_list)</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>x.s <span class="ot">&lt;-</span> <span class="fu">make.x.s</span>(simdata, <span class="at">num.groups =</span> <span class="dv">3</span>, <span class="at">groups =</span> group_list)</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>n_total <span class="ot">&lt;-</span> <span class="fu">nrow</span>(simdata)</span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>n_train <span class="ot">&lt;-</span> <span class="dv">700</span></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>Y.train <span class="ot">&lt;-</span> simdata<span class="sc">$</span>Y[<span class="dv">1</span><span class="sc">:</span>n_train]</span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a>Y.valid <span class="ot">&lt;-</span> simdata<span class="sc">$</span>Y[(n_train <span class="sc">+</span> <span class="dv">1</span>)<span class="sc">:</span>n_total]</span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>X.train <span class="ot">&lt;-</span> X_gwqs[<span class="dv">1</span><span class="sc">:</span>n_train, ]</span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>X.valid <span class="ot">&lt;-</span> X_gwqs[(n_train <span class="sc">+</span> <span class="dv">1</span>)<span class="sc">:</span>n_total, ]</span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a></span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>gwqs_group_fit <span class="ot">&lt;-</span> <span class="fu">gwqs.fit</span>(</span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>  <span class="at">y =</span> Y.valid, </span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>  <span class="at">y.train =</span> Y.train, </span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a>  <span class="at">x =</span> X.valid, </span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>  <span class="at">x.train =</span> X.train, </span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>  <span class="at">x.s =</span> x.s, </span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>  <span class="at">B =</span> N_BOOT,</span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>  <span class="at">n.quantiles =</span> <span class="dv">4</span>, </span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>  <span class="at">func =</span> <span class="st">&quot;binary&quot;</span></span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a>)</span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a></span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a><span class="fu">print</span>(gwqs_group_fit)</span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a></span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a><span class="co"># Extract weights</span></span>
+<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a><span class="co"># Extract weights from groupWQS</span></span>
+<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a>extract_weights_groupwqs <span class="ot">&lt;-</span> <span class="cf">function</span>(fit, var_names, group_list, <span class="at">method_name =</span> <span class="st">&quot;groupWQS&quot;</span>) {</span>
+<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a></span>
+<span id="cb6-38"><a href="#cb6-38" tabindex="-1"></a>  <span class="co"># Get GLM coefficients (excluding Intercept)</span></span>
+<span id="cb6-39"><a href="#cb6-39" tabindex="-1"></a>  glm_coefs <span class="ot">&lt;-</span> <span class="fu">coef</span>(fit<span class="sc">$</span>fit)</span>
+<span id="cb6-40"><a href="#cb6-40" tabindex="-1"></a>  gwqs_coefs <span class="ot">&lt;-</span> glm_coefs[<span class="fu">grep</span>(<span class="st">&quot;^GWQS&quot;</span>, <span class="fu">names</span>(glm_coefs))]</span>
+<span id="cb6-41"><a href="#cb6-41" tabindex="-1"></a>  </span>
+<span id="cb6-42"><a href="#cb6-42" tabindex="-1"></a>  <span class="co"># Get weights</span></span>
+<span id="cb6-43"><a href="#cb6-43" tabindex="-1"></a>  weights_list <span class="ot">&lt;-</span> fit<span class="sc">$</span>weights</span>
+<span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a>  </span>
+<span id="cb6-45"><a href="#cb6-45" tabindex="-1"></a>  <span class="co"># Data frame to store results</span></span>
+<span id="cb6-46"><a href="#cb6-46" tabindex="-1"></a>  result <span class="ot">&lt;-</span> <span class="fu">data.frame</span>()</span>
+<span id="cb6-47"><a href="#cb6-47" tabindex="-1"></a>  </span>
+<span id="cb6-48"><a href="#cb6-48" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(weights_list)) {</span>
+<span id="cb6-49"><a href="#cb6-49" tabindex="-1"></a>    grp_weights <span class="ot">&lt;-</span> weights_list[[i]]</span>
+<span id="cb6-50"><a href="#cb6-50" tabindex="-1"></a>    grp_coef <span class="ot">&lt;-</span> gwqs_coefs[i]</span>
+<span id="cb6-51"><a href="#cb6-51" tabindex="-1"></a>    </span>
+<span id="cb6-52"><a href="#cb6-52" tabindex="-1"></a>    <span class="co"># Determine direction based on coefficient sign</span></span>
+<span id="cb6-53"><a href="#cb6-53" tabindex="-1"></a>    <span class="cf">if</span> (grp_coef <span class="sc">&gt;=</span> <span class="dv">0</span>) {</span>
+<span id="cb6-54"><a href="#cb6-54" tabindex="-1"></a>      direction <span class="ot">&lt;-</span> <span class="st">&quot;Positive&quot;</span></span>
+<span id="cb6-55"><a href="#cb6-55" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb6-56"><a href="#cb6-56" tabindex="-1"></a>      direction <span class="ot">&lt;-</span> <span class="st">&quot;Negative&quot;</span></span>
+<span id="cb6-57"><a href="#cb6-57" tabindex="-1"></a>    }</span>
+<span id="cb6-58"><a href="#cb6-58" tabindex="-1"></a>    </span>
+<span id="cb6-59"><a href="#cb6-59" tabindex="-1"></a>    df_grp <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb6-60"><a href="#cb6-60" tabindex="-1"></a>      <span class="at">variable =</span> <span class="fu">names</span>(grp_weights),</span>
+<span id="cb6-61"><a href="#cb6-61" tabindex="-1"></a>      <span class="at">weight =</span> <span class="fu">as.numeric</span>(grp_weights),</span>
+<span id="cb6-62"><a href="#cb6-62" tabindex="-1"></a>      <span class="at">direction =</span> direction,</span>
+<span id="cb6-63"><a href="#cb6-63" tabindex="-1"></a>      <span class="at">method =</span> method_name,</span>
+<span id="cb6-64"><a href="#cb6-64" tabindex="-1"></a>      <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span></span>
+<span id="cb6-65"><a href="#cb6-65" tabindex="-1"></a>    )</span>
+<span id="cb6-66"><a href="#cb6-66" tabindex="-1"></a>    </span>
+<span id="cb6-67"><a href="#cb6-67" tabindex="-1"></a>    result <span class="ot">&lt;-</span> <span class="fu">rbind</span>(result, df_grp)</span>
+<span id="cb6-68"><a href="#cb6-68" tabindex="-1"></a>  }</span>
+<span id="cb6-69"><a href="#cb6-69" tabindex="-1"></a>  </span>
+<span id="cb6-70"><a href="#cb6-70" tabindex="-1"></a>  <span class="fu">return</span>(result)</span>
+<span id="cb6-71"><a href="#cb6-71" tabindex="-1"></a>}</span>
+<span id="cb6-72"><a href="#cb6-72" tabindex="-1"></a></span>
+<span id="cb6-73"><a href="#cb6-73" tabindex="-1"></a>weights_groupwqs <span class="ot">&lt;-</span> <span class="fu">extract_weights_groupwqs</span>(gwqs_group_fit)</span></code></pre></div>
+</div>
+<div id="sgl-wqs-2" class="section level3">
+<h3>SGL-WQS</h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>all_vars_g <span class="ot">&lt;-</span> <span class="fu">c</span>(PCBs_g, metals_g, pesticides)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">10</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>sglwqs_fit3 <span class="ot">&lt;-</span> <span class="fu">sglwqs</span>(</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="at">X =</span> simdata[, all_vars_g],</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">y =</span> simdata<span class="sc">$</span>Y,</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="at">family =</span> <span class="st">&quot;binomial&quot;</span>,</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>  <span class="at">groups =</span> <span class="fu">list</span>(</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>    <span class="at">PCBs =</span> PCBs_g, </span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>    <span class="at">Metals =</span> metals_g, </span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>    <span class="at">Pesticides =</span> pesticides</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>  ),</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>  <span class="at">n_quantiles =</span> <span class="dv">4</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>  <span class="at">bootstrap =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>  <span class="at">n_boot =</span> <span class="dv">500</span>,</span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>  <span class="at">parallel =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>  <span class="at">validation =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a>  <span class="at">train_prop =</span> <span class="fl">0.7</span>,</span>
+<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">123</span></span>
+<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a>)</span>
+<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a></span>
+<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a><span class="fu">plan</span>(sequential)</span>
+<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a><span class="fu">summary</span>(sglwqs_fit3)</span>
+<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a><span class="fu">plot_weights</span>(sglwqs_fit3)</span>
+<span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a><span class="fu">inference_table</span>(sglwqs_fit3)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">plot_combined_results</span>(sglwqs_fit3)</span></code></pre></div>
+<hr />
+</div>
+</div>
+<div id="feature-comparison" class="section level2">
+<h2>Feature Comparison</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th>gWQS</th>
+<th>qgcomp</th>
+<th>groupWQS</th>
+<th>SGL-WQS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Variable selection (sparse)</td>
+<td>×</td>
+<td>×</td>
+<td>×</td>
+<td>○</td>
+</tr>
+<tr class="even">
+<td>Bidirectional effects</td>
+<td>○ (2-index)</td>
+<td>○</td>
+<td>△</td>
+<td>○</td>
+</tr>
+<tr class="odd">
+<td>Group structure</td>
+<td>×</td>
+<td>×</td>
+<td>○</td>
+<td>○</td>
+</tr>
+<tr class="even">
+<td>Train/Validation split</td>
+<td>○</td>
+<td>×</td>
+<td>○</td>
+<td>○</td>
+</tr>
+<tr class="odd">
+<td>Bootstrap</td>
+<td>○</td>
+<td>○</td>
+<td>○</td>
+<td>○</td>
+</tr>
+<tr class="even">
+<td>Covariate adjustment</td>
+<td>○</td>
+<td>○</td>
+<td>△</td>
+<td>○</td>
+</tr>
+<tr class="odd">
+<td>Statistical inference</td>
+<td>○</td>
+<td>○</td>
+<td>○</td>
+<td>○</td>
+</tr>
+<tr class="even">
+<td>Parallel processing</td>
+<td>×</td>
+<td>×</td>
+<td>×</td>
+<td>○</td>
+</tr>
+<tr class="odd">
+<td>Checkpoint recovery</td>
+<td>×</td>
+<td>×</td>
+<td>×</td>
+<td>○</td>
+</tr>
+<tr class="even">
+<td>Large data scalability</td>
+<td>△</td>
+<td>△</td>
+<td>△</td>
+<td>○</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</div>
+<div id="scalability-and-computational-efficiency" class="section level2">
+<h2>Scalability and Computational Efficiency</h2>
+<p>SGL-WQS is designed for large-scale epidemiological studies with
+robust engineering:</p>
+<div id="batched-parallel-processing" class="section level3">
+<h3>Batched Parallel Processing</h3>
+<p>SGL-WQS employs a batched parallelization strategy with memory
+management, enabling efficient bootstrapping even for large cohorts (N =
+100,000) on standard workstations.</p>
+<p><strong>Automatic memory management</strong>: When data exceeds
+100MB, SGL-WQS automatically adjusts the
+<code>future.globals.maxSize</code> setting to prevent worker
+errors.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">library</span>(sglwqs)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">library</span>(future)</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">10</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a><span class="co"># For large datasets, sglwqs auto-detects and adjusts memory settings</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">sglwqs</span>(</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="at">X =</span> large_data[, exposures],  <span class="co"># e.g., N = 100,000</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="at">y =</span> large_data<span class="sc">$</span>outcome,</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  <span class="at">groups =</span> groups,</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>  <span class="at">family =</span> <span class="st">&quot;binomial&quot;</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>  <span class="at">bootstrap =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>  <span class="at">n_boot =</span> <span class="dv">500</span>,</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>  <span class="at">parallel =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>  <span class="at">validation =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>  <span class="at">checkpoint_dir =</span> <span class="st">&quot;sglwqs_checkpoint&quot;</span>,    <span class="co"># Save progress periodically</span></span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>  <span class="at">checkpoint_interval =</span> <span class="dv">50</span>,                 <span class="co"># Every 50 iterations</span></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>  <span class="co"># future_globals_max_size = NULL,         # Auto-detect (default)</span></span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>  <span class="co"># future_globals_max_size = 2000 * 1024^2,  # Or specify manually: 2GB</span></span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">123</span></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>)</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a><span class="co"># Output: &quot;Large dataset detected (250 MB). Auto-setting future.globals.maxSize to 1000 MB&quot;</span></span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a></span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="fu">plan</span>(sequential)</span></code></pre></div>
+</div>
+<div id="comparison-with-other-methods" class="section level3">
+<h3>Comparison with Other Methods</h3>
+<p>In our testing with N = 100,000 and 500 bootstrap iterations:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Memory Usage</th>
+<th>Crash Recovery</th>
+<th>Completion</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>gWQS</td>
+<td>High (all in memory)</td>
+<td>No</td>
+<td>May fail</td>
+</tr>
+<tr class="even">
+<td>qgcomp</td>
+<td>High</td>
+<td>No</td>
+<td>May fail</td>
+</tr>
+<tr class="odd">
+<td>groupWQS</td>
+<td>High</td>
+<td>No</td>
+<td>May fail</td>
+</tr>
+<tr class="even">
+<td><strong>SGL-WQS</strong></td>
+<td>Managed (batched)</td>
+<td><strong>Yes</strong></td>
+<td>Stable</td>
+</tr>
+</tbody>
+</table>
+<p>Key advantages: - <strong>Memory management</strong>: Results saved
+to disk periodically, reducing memory pressure - <strong>Crash
+recovery</strong>: Resume from checkpoint if interrupted -
+<strong>Progress monitoring</strong>: Check completed iterations via
+checkpoint file - <strong>Configurable data transfer</strong>:
+<code>future_globals_max_size</code> prevents worker errors</p>
+</div>
+<div id="recommended-settings-by-data-size" class="section level3">
+<h3>Recommended Settings by Data Size</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Sample Size</th>
+<th>Bootstrap</th>
+<th>Checkpoint</th>
+<th>Workers</th>
+<th>Estimated Time</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>N &lt; 10,000</td>
+<td>500</td>
+<td>Optional</td>
+<td>4-8</td>
+<td>&lt; 30 min</td>
+</tr>
+<tr class="even">
+<td>N = 10,000-50,000</td>
+<td>500</td>
+<td>Recommended</td>
+<td>8-10</td>
+<td>1-2 hours</td>
+</tr>
+<tr class="odd">
+<td>N &gt; 50,000</td>
+<td>500</td>
+<td>Required</td>
+<td>10+</td>
+<td>2-4 hours</td>
+</tr>
+<tr class="even">
+<td>N = 100,000</td>
+<td>500</td>
+<td>Required</td>
+<td>10+</td>
+<td>3-5 hours</td>
+</tr>
+</tbody>
+</table>
+<p>Note: Times are approximate and depend on hardware, number of
+exposures, and complexity.</p>
+<hr />
+</div>
+</div>
+<div id="recommendations" class="section level2">
+<h2>Recommendations</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Scenario</th>
+<th>Recommended Method</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Simple exploratory analysis</td>
+<td>qgcomp</td>
+</tr>
+<tr class="even">
+<td>Traditional WQS comparison</td>
+<td>gWQS (2-index)</td>
+</tr>
+<tr class="odd">
+<td>Clear group structure</td>
+<td>groupWQS or SGL-WQS</td>
+</tr>
+<tr class="even">
+<td>Variable selection needed</td>
+<td>SGL-WQS</td>
+</tr>
+<tr class="odd">
+<td>Groups + individual importance</td>
+<td>SGL-WQS</td>
+</tr>
+<tr class="even">
+<td>Missing data</td>
+<td>sglwqs_mice</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
