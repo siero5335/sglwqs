@@ -36,4 +36,4 @@ jobs:
         run: R CMD INSTALL sglwqs_*.tar.gz
 
       - name: Run package tests
-        run: Rscript -e 'devtools::test(".", quiet = TRUE)'
+        run: Rscript -e 'testthat::test_local(".", reporter = "summary")'

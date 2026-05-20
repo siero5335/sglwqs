@@ -39,4 +39,4 @@ jobs:
           Rscript -e 'remotes::install_deps(".", dependencies = TRUE, upgrade = "never")'
 
       - name: Run package tests
-        run: Rscript -e 'devtools::test(".", quiet = TRUE)'
+        run: Rscript -e 'testthat::test_local(".", reporter = "summary")'
