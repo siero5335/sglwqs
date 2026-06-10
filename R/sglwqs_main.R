@@ -419,6 +419,11 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       stop("`y` must be binary (0/1) when `family = \"binomial\"`.", call. = FALSE)
     }
   }
+  if (!is.numeric(train_prop) || length(train_prop) != 1L ||
+      !is.finite(train_prop) || train_prop <= 0 || train_prop >= 1) {
+    stop("`train_prop` must be a single numeric value strictly between 0 and 1.",
+         call. = FALSE)
+  }
 
   # Set future.globals.maxSize (only for parallel processing)
   if (parallel) {

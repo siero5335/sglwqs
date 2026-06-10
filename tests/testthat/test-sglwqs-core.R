@@ -16,6 +16,37 @@ test_that("sglwqs returns expected object structure", {
   expect_equal(length(fit$var_names), 4)
 })
 
+test_that("sglwqs validates train_prop early", {
+  dat <- make_simple_data(seed = 1001)
+
+  expect_error(
+    sglwqs(
+      X = dat[, c("x1", "x2", "x3", "x4")],
+      y = dat$y,
+      validation = TRUE,
+      train_prop = 1,
+      nfolds = 3,
+      nlambda = 10,
+      verbose = FALSE
+    ),
+    "strictly between 0 and 1",
+    fixed = TRUE
+  )
+
+  expect_error(
+    sglwqs(
+      X = dat[, c("x1", "x2", "x3", "x4")],
+      y = dat$y,
+      train_prop = 0,
+      nfolds = 3,
+      nlambda = 10,
+      verbose = FALSE
+    ),
+    "strictly between 0 and 1",
+    fixed = TRUE
+  )
+})
+
 
 test_that("weights stay in [0,1] and sum to 1 when selected", {
   dat <- make_simple_data(seed = 456)

@@ -71,4 +71,9 @@ test_that("autoplot and as.data.frame helpers run", {
   expect_s3_class(p2, "ggplot")
   expect_true(is.data.frame(df))
   expect_true(all(c("term", "weight") %in% names(df)))
+
+  coef_ci <- generics::tidy(fit, what = "coefficients", conf.int = TRUE)
+  wqs_rows <- coef_ci$direction %in% c("positive", "negative")
+  expect_true(any(is.finite(coef_ci$conf.low[wqs_rows])))
+  expect_true(any(is.finite(coef_ci$conf.high[wqs_rows])))
 })

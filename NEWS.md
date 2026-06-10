@@ -9,6 +9,13 @@
   the requested confidence level when intervals are displayed.
 * Stratified binomial bootstrap resampling now handles singleton strata without
   falling into R's scalar `sample()` behavior.
+* MI bootstrap pooling now preserves matrix dimensions when there is only one
+  exposure variable.
+* `tidy(what = "coefficients", conf.int = TRUE)` now merges bootstrap
+  confidence intervals for WQS coefficient rows when intercept or covariate rows
+  are present.
+* `sglwqs()` and `sglwqs_mice()` now validate that `train_prop` is a single
+  finite value strictly between 0 and 1.
 * Added `vcov.sglwqs()` for downstream refit and bootstrap-only covariance
   extraction.
 

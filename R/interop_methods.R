@@ -803,9 +803,14 @@ as_tibble_sglwqs <- function(x, ...) {
     stringsAsFactors = FALSE
   )
   
-  df$ci_key <- df$term
-  if ("direction" %in% names(df) && all(df$direction %in% c("positive", "negative"))) {
-    df$ci_key <- paste0(df$term, " [", df$direction, "]")
+  if ("direction" %in% names(df)) {
+    df$ci_key <- ifelse(
+      df$direction %in% c("positive", "negative"),
+      paste0(df$term, " [", df$direction, "]"),
+      df$term
+    )
+  } else {
+    df$ci_key <- df$term
   }
   
   idx <- match(df$ci_key, ci_df$ci_term)

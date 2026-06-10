@@ -244,6 +244,11 @@ sglwqs_mice <- function(mids_obj,
   if (is.null(exposure_vars) || is.null(outcome_var)) {
     stop("Specify exposures/outcome via `exposure_vars` + `outcome_var`, `X` + `y`, or `formula`.")
   }
+  if (!is.numeric(train_prop) || length(train_prop) != 1L ||
+      !is.finite(train_prop) || train_prop <= 0 || train_prop >= 1) {
+    stop("`train_prop` must be a single numeric value strictly between 0 and 1.",
+         call. = FALSE)
+  }
 
   # ----- Resolve group spec once (same rules as sglwqs()) -----
   if (is.null(group_by_compound)) {
@@ -487,6 +492,18 @@ parse_sglwqs_formula <- function(formula) {
   apply(x, 1, var)
 }
 
+#' @keywords internal
+.collect_mi_named_vector_matrix <- function(fits, extractor, names) {
+  out <- vapply(fits, function(f) {
+    vals <- extractor(f)
+    vals <- vals[names]
+    as.numeric(vals)
+  }, numeric(length(names)))
+  out <- matrix(out, nrow = length(names))
+  rownames(out) <- names
+  out
+}
+
 #' Pool sglwqs Results Using Rubin's Rules
 #'
 #' @param fits List of sglwqs objects
@@ -518,8 +535,8 @@ pool_sglwqs_results <- function(fits, verbose = TRUE) {
 
   # ----- 1. Pool weights (simple mean) -----
   # Align by name to be robust against ordering differences
-  pos_weights_mat <- sapply(fits, function(f) f$pos_weights[var_names])
-  neg_weights_mat <- sapply(fits, function(f) f$neg_weights[var_names])
+  pos_weights_mat <- .collect_mi_named_vector_matrix(fits, function(f) f$pos_weights, var_names)
+  neg_weights_mat <- .collect_mi_named_vector_matrix(fits, function(f) f$neg_weights, var_names)
   
   pooled_pos_weights <- rowMeans(pos_weights_mat)
   pooled_neg_weights <- rowMeans(neg_weights_mat)
@@ -531,8 +548,8 @@ pool_sglwqs_results <- function(fits, verbose = TRUE) {
   neg_weights_var <- .row_var_or_zero(neg_weights_mat)
   
   # ----- 2. Pool coefficients -----
-  pos_coef_mat <- sapply(fits, function(f) f$pos_coef[var_names])
-  neg_coef_mat <- sapply(fits, function(f) f$neg_coef[var_names])
+  pos_coef_mat <- .collect_mi_named_vector_matrix(fits, function(f) f$pos_coef, var_names)
+  neg_coef_mat <- .collect_mi_named_vector_matrix(fits, function(f) f$neg_coef, var_names)
   
   pooled_pos_coef <- rowMeans(pos_coef_mat)
   pooled_neg_coef <- rowMeans(neg_coef_mat)
@@ -555,8 +572,8 @@ pool_sglwqs_results <- function(fits, verbose = TRUE) {
   # ----- 5. Pool bootstrap info (if available) -----
   if (first_fit$bootstrap) {
     # Average selection frequency across imputations (align by name)
-    boot_sel_freq_pos <- sapply(fits, function(f) f$boot_info$selection_freq_pos[var_names])
-    boot_sel_freq_neg <- sapply(fits, function(f) f$boot_info$selection_freq_neg[var_names])
+    boot_sel_freq_pos <- .collect_mi_named_vector_matrix(fits, function(f) f$boot_info$selection_freq_pos, var_names)
+    boot_sel_freq_neg <- .collect_mi_named_vector_matrix(fits, function(f) f$boot_info$selection_freq_neg, var_names)
     
     # Weighted mean by n_successful bootstrap draws per imputation
     boot_n_success <- vapply(fits, function(f) {
@@ -575,16 +592,16 @@ pool_sglwqs_results <- function(fits, verbose = TRUE) {
     names(pooled_boot_sel_freq_neg) <- var_names
     
     # Pool SE info (Rubin's rules: T = W_bar + (1 + 1/m) * B)
-    boot_se_pos <- sapply(fits, function(f) f$boot_info$se_pos_coef[var_names])
-    boot_se_neg <- sapply(fits, function(f) f$boot_info$se_neg_coef[var_names])
+    boot_se_pos <- .collect_mi_named_vector_matrix(fits, function(f) f$boot_info$se_pos_coef, var_names)
+    boot_se_neg <- .collect_mi_named_vector_matrix(fits, function(f) f$boot_info$se_neg_coef, var_names)
 
     # Within-imputation variance: mean of SE^2
     W_bar_pos <- rowMeans(boot_se_pos^2)
     W_bar_neg <- rowMeans(boot_se_neg^2)
 
     # Between-imputation variance: variance of point estimates
-    boot_mean_pos <- sapply(fits, function(f) f$boot_info$mean_pos_coef[var_names])
-    boot_mean_neg <- sapply(fits, function(f) f$boot_info$mean_neg_coef[var_names])
+    boot_mean_pos <- .collect_mi_named_vector_matrix(fits, function(f) f$boot_info$mean_pos_coef, var_names)
+    boot_mean_neg <- .collect_mi_named_vector_matrix(fits, function(f) f$boot_info$mean_neg_coef, var_names)
     B_pos <- .row_var_or_zero(boot_mean_pos)
     B_neg <- .row_var_or_zero(boot_mean_neg)
 

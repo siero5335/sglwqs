@@ -387,3 +387,45 @@ test_that("pool_bootstrap_inference pools grouped bootstrap summaries", {
   expect_true(!is.null(pooled$covariates$z1))
   expect_true(is.finite(pooled$covariates$z1$estimate))
 })
+
+test_that("pool_sglwqs_results keeps matrix dimensions for one exposure with MI bootstrap", {
+  make_fit <- function(pos_mean, pos_se, n_success) {
+    structure(
+      list(
+        var_names = "x1",
+        p = 1L,
+        groups = NULL,
+        pos_weights = c(x1 = 1),
+        neg_weights = c(x1 = 0),
+        pos_coef = c(x1 = pos_mean),
+        neg_coef = c(x1 = 0),
+        pos_index_sum = pos_mean,
+        neg_index_sum = 0,
+        validation_info = NULL,
+        refit_info = NULL,
+        bootstrap = TRUE,
+        boot_info = list(
+          selection_freq_pos = c(x1 = 1),
+          selection_freq_neg = c(x1 = 0),
+          n_successful = n_success,
+          se_pos_coef = c(x1 = pos_se),
+          se_neg_coef = c(x1 = 0.02),
+          mean_pos_coef = c(x1 = pos_mean),
+          mean_neg_coef = c(x1 = 0)
+        )
+      ),
+      class = "sglwqs"
+    )
+  }
+
+  pooled <- sglwqs:::pool_sglwqs_results(
+    list(make_fit(0.4, 0.10, 5), make_fit(0.6, 0.12, 7)),
+    verbose = FALSE
+  )
+
+  expect_named(pooled$pos_weights, "x1")
+  expect_named(pooled$bootstrap$selection_freq_pos, "x1")
+  expect_named(pooled$bootstrap$se_pos_coef, "x1")
+  expect_true(is.finite(pooled$bootstrap$selection_freq_pos[["x1"]]))
+  expect_true(is.finite(pooled$bootstrap$se_pos_coef[["x1"]]))
+})

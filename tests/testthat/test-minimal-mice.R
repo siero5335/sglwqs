@@ -60,6 +60,26 @@ test_that("sglwqs_mice propagates canonical groups to fits and top-level object"
   invisible(lapply(fits_groups, check_canonical_groups, canonical = groups))
 })
 
+test_that("sglwqs_mice validates train_prop before fitting imputations", {
+  skip_if_not_installed("mice")
+
+  imp <- make_minimal_mids(seed = 22, m = 2)
+
+  expect_error(
+    sglwqs_mice(
+      mids_obj = imp,
+      exposure_vars = c("x1", "x2", "x3"),
+      outcome_var = "y",
+      train_prop = 1,
+      nfolds = 3,
+      nlambda = 10,
+      verbose = FALSE
+    ),
+    "strictly between 0 and 1",
+    fixed = TRUE
+  )
+})
+
 test_that("plot/order helpers handle explicit 'Other' without duplication", {
   skip_if_not_installed("mice")
 
