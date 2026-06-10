@@ -342,11 +342,11 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
         for (level in y_levels) {
           level_idx <- which(y == level)
           # Resample equal number from each stratum
-          boot_idx <- c(boot_idx, sample(level_idx, length(level_idx), replace = TRUE))
+          boot_idx <- c(boot_idx, level_idx[sample.int(length(level_idx), length(level_idx), replace = TRUE)])
         }
         
         # Shuffle (randomize order)
-        boot_idx <- sample(boot_idx)
+        boot_idx <- boot_idx[sample.int(length(boot_idx))]
         
       } else {
         # Simple bootstrap

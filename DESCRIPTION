@@ -1,6 +1,6 @@
 Package: sglwqs
 Title: Weighted Quantile Sum Regression with Sparse Group Lasso
-Version: 0.8.13
+Version: 0.8.13.9001
 Authors@R: 
     person("Akifumi", "Eguchi", email = "siero5335@gmail.com", role = c("aut", "cre"))
 Description: Performs Weighted Quantile Sum (WQS) regression using Sparse Group 

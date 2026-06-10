@@ -140,12 +140,20 @@ summary_bootstrap <- function(object, conf_level = 0.95, min_freq = 0) {
   attr(results, "n_boot") <- object$boot_info$n_successful
   attr(results, "conf_level") <- conf_level
   if (!is.null(boot_info$mean_cov_coef)) {
+    if (has_boot_matrices && !is.null(boot_info$boot_cov_coef)) {
+      cov_block <- boot_info$boot_cov_coef[valid_boots, , drop = FALSE]
+      cov_ci_lower <- apply(cov_block, 2, quantile, probs = alpha / 2, na.rm = TRUE)
+      cov_ci_upper <- apply(cov_block, 2, quantile, probs = 1 - alpha / 2, na.rm = TRUE)
+    } else {
+      cov_ci_lower <- as.numeric(boot_info$mean_cov_coef) - z_val * as.numeric(boot_info$se_cov_coef)
+      cov_ci_upper <- as.numeric(boot_info$mean_cov_coef) + z_val * as.numeric(boot_info$se_cov_coef)
+    }
     cov_summary <- data.frame(
       term = names(boot_info$mean_cov_coef),
       mean_coef = as.numeric(boot_info$mean_cov_coef),
       se_coef = as.numeric(boot_info$se_cov_coef),
-      ci_lower = as.numeric(boot_info$ci_lower_cov),
-      ci_upper = as.numeric(boot_info$ci_upper_cov),
+      ci_lower = as.numeric(cov_ci_lower),
+      ci_upper = as.numeric(cov_ci_upper),
       stringsAsFactors = FALSE
     )
     attr(results, "covariate_summary") <- cov_summary
@@ -469,16 +477,38 @@ summary_inference.sglwqs <- function(object, conf_level = 0.95) {
   summarize_boot_term <- function(term, group, direction, type, res) {
     est <- res$estimate %||% NA_real_
     se <- res$se %||% NA_real_
+    df <- res$df %||% NA_real_
+    crit <- if (is.finite(df) && df > 0) {
+      stats::qt(1 - alpha / 2, df)
+    } else {
+      z_val
+    }
+    ci_matches_level <- isTRUE(all.equal(res$conf_level %||% conf_level, conf_level))
+    ci_lower <- if (ci_matches_level && !is.null(res$ci_lower)) {
+      res$ci_lower
+    } else if (is.finite(est) && is.finite(se)) {
+      est - crit * se
+    } else {
+      NA_real_
+    }
+    ci_upper <- if (ci_matches_level && !is.null(res$ci_upper)) {
+      res$ci_upper
+    } else if (is.finite(est) && is.finite(se)) {
+      est + crit * se
+    } else {
+      NA_real_
+    }
+    is_loading <- identical(type, "WQS Loading")
     data.frame(
       term = term,
       group = group,
       direction = direction,
       estimate = est,
       std_error = se,
-      ci_lower = res$ci_lower %||% if (is.finite(est) && is.finite(se)) est - z_val * se else NA_real_,
-      ci_upper = res$ci_upper %||% if (is.finite(est) && is.finite(se)) est + z_val * se else NA_real_,
-      p_value = res$p_value %||% .bootstrap_p_value(est, se),
-      df = res$df %||% NA_real_,
+      ci_lower = ci_lower,
+      ci_upper = ci_upper,
+      p_value = if (is_loading) NA_real_ else res$p_value %||% .bootstrap_p_value(est, se),
+      df = df,
       fmi = res$fmi %||% NA_real_,
       t_stat = res$t_stat %||% NA_real_,
       type = type,
@@ -491,10 +521,10 @@ summary_inference.sglwqs <- function(object, conf_level = 0.95) {
       grp_res <- group_results[[grp_name]]
       for (dir_name in c("positive", "negative")) {
         rows[[length(rows) + 1]] <- summarize_boot_term(
-          term = paste0(grp_name, " (", dir_name, ")"),
+          term = paste0(grp_name, " (", dir_name, " loading)"),
           group = grp_name,
           direction = dir_name,
-          type = "WQS Index",
+          type = "WQS Loading",
           res = grp_res[[dir_name]]
         )
       }
@@ -502,19 +532,19 @@ summary_inference.sglwqs <- function(object, conf_level = 0.95) {
   } else {
     if (!is.null(wqs_pos)) {
       rows[[length(rows) + 1]] <- summarize_boot_term(
-        term = "WQS Positive",
+        term = "WQS Positive loading",
         group = "Overall",
         direction = "positive",
-        type = "WQS Index",
+        type = "WQS Loading",
         res = wqs_pos
       )
     }
     if (!is.null(wqs_neg)) {
       rows[[length(rows) + 1]] <- summarize_boot_term(
-        term = "WQS Negative",
+        term = "WQS Negative loading",
         group = "Overall",
         direction = "negative",
-        type = "WQS Index",
+        type = "WQS Loading",
         res = wqs_neg
       )
     }

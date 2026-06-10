@@ -134,6 +134,79 @@ test_that("sglwqs bootstrap keeps aggregated covariate summaries but omits matri
   expect_null(fit$boot_info$boot_cov_coef)
 })
 
+test_that("summary_bootstrap covariate intervals respect requested confidence level", {
+  boot_cov <- cbind(
+    age = c(-2, -1, 0, 1, 2),
+    bmi = c(1, 2, 3, 4, 5)
+  )
+  fit <- structure(
+    list(
+      bootstrap = TRUE,
+      var_names = c("x1", "x2"),
+      pos_weights = c(0.7, 0.3),
+      neg_weights = c(0.2, 0.8),
+      groups = NULL,
+      boot_info = list(
+        boot_pos_coef = matrix(c(0.1, 0.2, 0.0, 0.1, 0.3,
+                                 0.0, 0.1, 0.2, 0.1, 0.0), ncol = 2),
+        boot_neg_coef = matrix(c(0.0, -0.1, -0.2, 0.0, -0.1,
+                                 -0.2, 0.0, -0.1, -0.3, 0.0), ncol = 2),
+        boot_success = rep(TRUE, 5),
+        selection_freq_pos = c(1, 1),
+        selection_freq_neg = c(1, 1),
+        mean_cov_coef = colMeans(boot_cov),
+        se_cov_coef = apply(boot_cov, 2, stats::sd),
+        boot_cov_coef = boot_cov,
+        n_successful = 5
+      )
+    ),
+    class = "sglwqs"
+  )
+
+  out80 <- summary_bootstrap(fit, conf_level = 0.80)
+  cov80 <- attr(out80, "covariate_summary")
+
+  expect_equal(cov80$ci_lower[cov80$term == "age"],
+               as.numeric(stats::quantile(boot_cov[, "age"], probs = 0.10)))
+  expect_equal(cov80$ci_upper[cov80$term == "bmi"],
+               as.numeric(stats::quantile(boot_cov[, "bmi"], probs = 0.90)))
+})
+
+test_that("binomial stratified bootstrap preserves singleton strata", {
+  observed_cases <- integer(0)
+  X_quantile <- matrix(runif(12), ncol = 1)
+  colnames(X_quantile) <- "x1"
+  y <- c(rep(0, 11), 1)
+
+  res <- testthat::with_mocked_bindings(
+    sglwqs:::bootstrap_sgl(
+      X_quantile = X_quantile,
+      y = y,
+      cov_matrix = NULL,
+      var_names = "x1",
+      cov_names = NULL,
+      groups = NULL,
+      group_by_compound = FALSE,
+      group_structure = "direction",
+      penalize_covariates = FALSE,
+      family = "binomial",
+      lambda = "lambda.min",
+      nfolds = 2,
+      n_boot = 20,
+      seed = 77,
+      stratified = TRUE,
+      verbose = FALSE
+    ),
+    fit_sgl_core = function(X_quantile, y, ...) {
+      observed_cases <<- c(observed_cases, sum(y == 1))
+      list(pos_coef = c(x1 = 0), neg_coef = c(x1 = 0), cov_coef = NULL)
+    }
+  )
+
+  expect_equal(res$n_successful, 20)
+  expect_equal(observed_cases, rep(1L, 20))
+})
+
 test_that("bootstrap checkpoint restores boot_cov_coef and MI pooling prefers bootstrap means", {
   checkpoint_dir <- tempfile("sglwqs-cov-checkpoint-")
   dir.create(checkpoint_dir)

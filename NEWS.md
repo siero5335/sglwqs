@@ -1,3 +1,17 @@
+# sglwqs 0.8.13.9001
+
+## Bug fixes
+
+* Bootstrap-only inference summaries now label WQS positive/negative rows as
+  loading magnitudes and suppress p-values for these loading rows, avoiding
+  confusion with signed downstream refit coefficients.
+* Covariate bootstrap summaries and MI bootstrap inference summaries now respect
+  the requested confidence level when intervals are displayed.
+* Stratified binomial bootstrap resampling now handles singleton strata without
+  falling into R's scalar `sample()` behavior.
+* Added `vcov.sglwqs()` for downstream refit and bootstrap-only covariance
+  extraction.
+
 # sglwqs 0.8.13
 
 ## Improvements

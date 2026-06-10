@@ -159,7 +159,8 @@ test_that("ungrouped bootstrap-only and downstream modes expose overall inferenc
     verbose = FALSE
   ))
   inf_boot <- summary_inference(fit_boot)
-  expect_true(all(c("WQS Positive", "WQS Negative") %in% inf_boot$term))
+  expect_true(all(c("WQS Positive loading", "WQS Negative loading") %in% inf_boot$term))
+  expect_true(all(is.na(inf_boot$p_value[inf_boot$type == "WQS Loading"])))
 
   fit_refit <- suppressWarnings(sglwqs(
     X = dat[, c("x1", "x2", "x3", "x4")],
@@ -187,5 +188,6 @@ test_that("ungrouped bootstrap-only and downstream modes expose overall inferenc
     verbose = FALSE
   ))
   inf_mi_boot <- summary_inference(fit_mi_boot)
-  expect_true(all(c("WQS Positive", "WQS Negative") %in% inf_mi_boot$term))
+  expect_true(all(c("WQS Positive loading", "WQS Negative loading") %in% inf_mi_boot$term))
+  expect_true(all(is.na(inf_mi_boot$p_value[inf_mi_boot$type == "WQS Loading"])))
 })

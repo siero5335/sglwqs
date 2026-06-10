@@ -611,6 +611,143 @@ confint.sglwqs <- function(object, parm = NULL, level = 0.95, type = NULL,
 }
 
 
+#' @keywords internal
+.block_diag_matrices <- function(mats) {
+  if (length(mats) == 0L) {
+    return(matrix(numeric(0), nrow = 0L, ncol = 0L))
+  }
+  if (length(mats) == 1L) {
+    return(mats[[1L]])
+  }
+  dims <- vapply(mats, nrow, integer(1))
+  out <- matrix(0, nrow = sum(dims), ncol = sum(dims))
+  rn <- unlist(lapply(mats, rownames), use.names = FALSE)
+  if (!is.null(rn)) {
+    dimnames(out) <- list(rn, rn)
+  }
+  start <- 1L
+  for (i in seq_along(mats)) {
+    idx <- seq.int(start, length.out = dims[[i]])
+    out[idx, idx] <- mats[[i]]
+    start <- start + dims[[i]]
+  }
+  out
+}
+
+
+#' Variance-Covariance Matrix for sglwqs Objects
+#'
+#' Returns the variance-covariance matrix from the active downstream refit model
+#' when available. For bootstrap-only fits, returns the empirical covariance of
+#' stored bootstrap exposure coefficients, optionally including bootstrap
+#' covariate coefficients.
+#'
+#' @param object A fitted \code{sglwqs} object.
+#' @param type Character. \code{"validation"} or \code{"bootstrap"}. If
+#'   \code{NULL}, the method prefers the active downstream refit and otherwise
+#'   uses bootstrap information.
+#' @param direction Character. \code{"both"} (default), \code{"positive"}, or
+#'   \code{"negative"} for bootstrap coefficient covariance.
+#' @param include_covariates Logical. Include covariate coefficients in the
+#'   bootstrap covariance matrix when stored.
+#' @param ... Unused.
+#'
+#' @return A numeric variance-covariance matrix.
+#' @export
+vcov.sglwqs <- function(object, type = NULL,
+                        direction = c("both", "positive", "negative"),
+                        include_covariates = TRUE, ...) {
+  if (!inherits(object, "sglwqs")) {
+    stop("Object must be of class 'sglwqs'.")
+  }
+  direction <- match.arg(direction)
+
+  if (is.null(type)) {
+    if (!is.null(.get_active_refit_info(object))) {
+      type <- "validation"
+    } else if (isTRUE(object$bootstrap)) {
+      type <- "bootstrap"
+    } else {
+      stop("No variance-covariance source found. Fit with validation/refit or bootstrap.")
+    }
+  }
+  type <- match.arg(type, c("validation", "bootstrap"))
+
+  if (identical(type, "validation")) {
+    info <- .get_active_refit_info(object)
+    if (is.null(info) || is.null(info$refit_fit)) {
+      stop("No downstream refit model is available for `vcov(type = \"validation\")`.")
+    }
+    return(stats::vcov(info$refit_fit))
+  }
+
+  bi <- object$boot_info
+  if (is.null(bi)) {
+    stop("Bootstrap variance-covariance requires `bootstrap = TRUE`.")
+  }
+
+  empirical_blocks <- list()
+  diagonal_blocks <- list()
+  if (direction %in% c("both", "positive")) {
+    if (!is.null(bi$boot_pos_coef)) {
+      pos <- bi$boot_pos_coef
+      colnames(pos) <- paste0("pos_b.", object$var_names)
+      empirical_blocks[[length(empirical_blocks) + 1L]] <- pos
+    } else if (!is.null(bi$se_pos_coef)) {
+      names_pos <- paste0("pos_b.", object$var_names)
+      out <- diag(as.numeric(bi$se_pos_coef)^2, nrow = length(names_pos))
+      dimnames(out) <- list(names_pos, names_pos)
+      diagonal_blocks[[length(diagonal_blocks) + 1L]] <- out
+    }
+  }
+  if (direction %in% c("both", "negative")) {
+    if (!is.null(bi$boot_neg_coef)) {
+      neg <- bi$boot_neg_coef
+      colnames(neg) <- paste0("neg_b.", object$var_names)
+      empirical_blocks[[length(empirical_blocks) + 1L]] <- neg
+    } else if (!is.null(bi$se_neg_coef)) {
+      names_neg <- paste0("neg_b.", object$var_names)
+      out <- diag(as.numeric(bi$se_neg_coef)^2, nrow = length(names_neg))
+      dimnames(out) <- list(names_neg, names_neg)
+      diagonal_blocks[[length(diagonal_blocks) + 1L]] <- out
+    }
+  }
+  if (isTRUE(include_covariates) && !is.null(bi$boot_cov_coef)) {
+    cov_block <- bi$boot_cov_coef
+    colnames(cov_block) <- colnames(cov_block) %||% names(bi$mean_cov_coef)
+    empirical_blocks[[length(empirical_blocks) + 1L]] <- cov_block
+  }
+
+  if (length(empirical_blocks) == 0L && length(diagonal_blocks) == 0L) {
+    stop("No stored bootstrap coefficient information is available for `vcov(type = \"bootstrap\")`.")
+  }
+
+  if (length(empirical_blocks) > 0L) {
+    if (!all(vapply(empirical_blocks, function(x) nrow(x) == nrow(empirical_blocks[[1L]]), logical(1)))) {
+      stop("Stored bootstrap coefficient matrices have incompatible row counts.")
+    }
+    mat <- do.call(cbind, empirical_blocks)
+    if (!is.null(bi$boot_success) && length(bi$boot_success) == nrow(mat)) {
+      mat <- mat[bi$boot_success, , drop = FALSE]
+    }
+    cov_emp <- stats::cov(mat, use = "pairwise.complete.obs")
+    if (length(diagonal_blocks) == 0L) {
+      return(cov_emp)
+    }
+    diag_cov <- .block_diag_matrices(diagonal_blocks)
+    out <- matrix(0, nrow = nrow(cov_emp) + nrow(diag_cov), ncol = ncol(cov_emp) + ncol(diag_cov))
+    rn <- c(rownames(cov_emp), rownames(diag_cov))
+    dimnames(out) <- list(rn, rn)
+    out[seq_len(nrow(cov_emp)), seq_len(ncol(cov_emp))] <- cov_emp
+    idx <- seq.int(nrow(cov_emp) + 1L, nrow(out))
+    out[idx, idx] <- diag_cov
+    return(out)
+  }
+
+  .block_diag_matrices(diagonal_blocks)
+}
+
+
 #' Cross-validation Curve for Lambda Selection
 #'
 #' Visualizes the \code{cv.sparsegl} cross-validation curve stored in a

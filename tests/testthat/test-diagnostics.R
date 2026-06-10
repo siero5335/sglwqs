@@ -116,7 +116,8 @@ test_that("summary_inference and plot_inference_results fall back to bootstrap s
 
   expect_s3_class(inf, "sglwqs_validation_summary")
   expect_identical(attr(inf, "source"), "boot_info")
-  expect_true(all(c("G1 (positive)", "G2 (negative)") %in% inf$term))
+  expect_true(all(c("G1 (positive loading)", "G2 (negative loading)") %in% inf$term))
+  expect_true(all(is.na(inf$p_value[inf$type == "WQS Loading"])))
   expect_true("age" %in% inf$term)
   expect_s3_class(plt, "ggplot")
   expect_false("age" %in% plt_no_cov$data$term)
@@ -138,16 +139,16 @@ test_that("summary_inference and plot_inference_results work for mids bootstrap 
           has_group_results = TRUE,
           group_results = list(
             G1 = list(
-              positive = list(estimate = 0.6, se = 0.15, p_value = 0.01, ci_lower = 0.2, ci_upper = 1.1, df = 12, fmi = 0.3),
-              negative = list(estimate = 0.1, se = 0.08, p_value = 0.20, ci_lower = -0.1, ci_upper = 0.3, df = 12, fmi = 0.2)
+              positive = list(estimate = 0.6, se = 0.15, p_value = 0.01, ci_lower = 0.2, ci_upper = 1.1, df = 12, fmi = 0.3, conf_level = 0.95),
+              negative = list(estimate = 0.1, se = 0.08, p_value = 0.20, ci_lower = -0.1, ci_upper = 0.3, df = 12, fmi = 0.2, conf_level = 0.95)
             ),
             G2 = list(
-              positive = list(estimate = 0.2, se = 0.10, p_value = 0.08, ci_lower = 0.01, ci_upper = 0.39, df = 12, fmi = 0.1),
-              negative = list(estimate = 0.5, se = 0.12, p_value = 0.02, ci_lower = 0.2, ci_upper = 0.8, df = 12, fmi = 0.4)
+              positive = list(estimate = 0.2, se = 0.10, p_value = 0.08, ci_lower = 0.01, ci_upper = 0.39, df = 12, fmi = 0.1, conf_level = 0.95),
+              negative = list(estimate = 0.5, se = 0.12, p_value = 0.02, ci_lower = 0.2, ci_upper = 0.8, df = 12, fmi = 0.4, conf_level = 0.95)
             )
           ),
           covariates = list(
-            age = list(estimate = 0.3, se = 0.09, p_value = 0.01, ci_lower = 0.05, ci_upper = 0.55, df = 11, fmi = 0.25)
+            age = list(estimate = 0.3, se = 0.09, p_value = 0.01, ci_lower = 0.05, ci_upper = 0.55, df = 11, fmi = 0.25, conf_level = 0.95)
           )
         )
       ),
@@ -164,6 +165,7 @@ test_that("summary_inference and plot_inference_results work for mids bootstrap 
   fit_mids$diagnostics <- compute_diagnostics(fit_mids)
 
   inf <- summary_inference(fit_mids)
+  inf90 <- summary_inference(fit_mids, conf_level = 0.90)
   plt <- plot_inference_results(fit_mids)
   plt_no_cov <- plot_inference_results(fit_mids, include_covariates = FALSE)
   out <- capture.output(summary(fit_mids))
@@ -171,14 +173,56 @@ test_that("summary_inference and plot_inference_results work for mids bootstrap 
   expect_s3_class(inf, "sglwqs_validation_summary")
   expect_identical(attr(inf, "source"), "boot_info")
   expect_true("age" %in% inf$term)
-  expect_equal(inf$ci_lower[inf$term == "G1 (positive)"], 0.2)
+  expect_equal(inf$ci_lower[inf$term == "G1 (positive loading)"], 0.2)
   expect_equal(inf$ci_upper[inf$term == "age"], 0.55)
-  expect_equal(inf$df[inf$term == "G1 (positive)"], 12)
+  expect_equal(inf$df[inf$term == "G1 (positive loading)"], 12)
   expect_equal(inf$fmi[inf$term == "age"], 0.25)
+  expect_true(all(is.na(inf$p_value[inf$type == "WQS Loading"])))
+  expected_lwr90 <- 0.6 - stats::qt(0.95, 12) * 0.15
+  expect_equal(inf90$ci_lower[inf90$term == "G1 (positive loading)"], expected_lwr90)
   expect_s3_class(plt, "ggplot")
   expect_false("age" %in% plt_no_cov$data$term)
   expect_true(any(grepl("Rubin-Pooled Bootstrap Inference", out, fixed = TRUE)))
   expect_identical(fit_mids$diagnostics$two_stage_path$value, "bootstrap_only")
+})
+
+test_that("vcov.sglwqs exposes validation and bootstrap covariance sources", {
+  fit_val <- suppressWarnings(sglwqs(
+    X = sglwqs_example[, c("metal1", "metal2", "metal3")],
+    y = sglwqs_example$outcome_cont,
+    refit = "full",
+    nfolds = 3,
+    nlambda = 15,
+    seed = 18,
+    verbose = FALSE
+  ))
+  vc_val <- vcov(fit_val)
+
+  expect_true(is.matrix(vc_val))
+  expect_true(nrow(vc_val) >= 1)
+  expect_true(all(diag(vc_val) >= 0 | is.na(diag(vc_val))))
+
+  fit_boot <- structure(
+    list(
+      bootstrap = TRUE,
+      validation_info = NULL,
+      refit_info = NULL,
+      var_names = c("x1", "x2"),
+      boot_info = list(
+        boot_pos_coef = matrix(c(0.1, 0.2, 0.3, 0.4,
+                                 0.2, 0.1, 0.4, 0.3), ncol = 2),
+        boot_neg_coef = matrix(c(-0.1, -0.2, -0.1, -0.3,
+                                 -0.2, -0.1, -0.4, -0.3), ncol = 2),
+        boot_success = rep(TRUE, 4)
+      )
+    ),
+    class = "sglwqs"
+  )
+  vc_boot <- vcov(fit_boot, type = "bootstrap")
+
+  expect_true(is.matrix(vc_boot))
+  expect_equal(nrow(vc_boot), 4)
+  expect_true(all(c("pos_b.x1", "pos_b.x2", "neg_b.x1", "neg_b.x2") %in% rownames(vc_boot)))
 })
 
 test_that("compute_diagnostics reports all-zero weights and validation set size when applicable", {
