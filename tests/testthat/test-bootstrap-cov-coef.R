@@ -207,6 +207,52 @@ test_that("binomial stratified bootstrap preserves singleton strata", {
   expect_equal(observed_cases, rep(1L, 20))
 })
 
+test_that("parallel bootstrap retries failed future batches sequentially", {
+  skip_if_not_installed("future.apply")
+
+  X_quantile <- matrix(runif(24), ncol = 2)
+  colnames(X_quantile) <- c("x1", "x2")
+  y <- rnorm(12)
+  future_calls <- 0L
+  fit_calls <- 0L
+
+  res <- testthat::with_mocked_bindings(
+    sglwqs:::bootstrap_sgl(
+      X_quantile = X_quantile,
+      y = y,
+      cov_matrix = NULL,
+      var_names = colnames(X_quantile),
+      cov_names = NULL,
+      groups = NULL,
+      group_by_compound = FALSE,
+      group_structure = "direction",
+      penalize_covariates = FALSE,
+      family = "gaussian",
+      lambda = "lambda.min",
+      nfolds = 2,
+      n_boot = 4,
+      seed = 888,
+      verbose = FALSE,
+      parallel = TRUE,
+      checkpoint_interval = 2
+    ),
+    .future_lapply = function(...) {
+      future_calls <<- future_calls + 1L
+      stop("simulated future backend failure")
+    },
+    fit_sgl_core = function(...) {
+      fit_calls <<- fit_calls + 1L
+      list(pos_coef = c(x1 = 0.4, x2 = 0), neg_coef = c(x1 = 0, x2 = 0.2), cov_coef = NULL)
+    },
+    .package = "sglwqs"
+  )
+
+  expect_equal(future_calls, 2L)
+  expect_equal(fit_calls, 4L)
+  expect_equal(res$n_successful, 4L)
+  expect_true(all(res$boot_success))
+})
+
 test_that("bootstrap checkpoint restores boot_cov_coef and MI pooling prefers bootstrap means", {
   checkpoint_dir <- tempfile("sglwqs-cov-checkpoint-")
   dir.create(checkpoint_dir)

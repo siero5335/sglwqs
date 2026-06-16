@@ -16,6 +16,9 @@
   are present.
 * `sglwqs()` and `sglwqs_mice()` now validate that `train_prop` is a single
   finite value strictly between 0 and 1.
+* Parallel bootstrap batches now fall back to sequential retry when the future
+  backend fails at the batch level, and representative bootstrap errors are
+  retained for diagnostics.
 * Added `vcov.sglwqs()` for downstream refit and bootstrap-only covariance
   extraction.
 

@@ -187,6 +187,11 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
 }
 
 
+#' @keywords internal
+.future_lapply <- function(...) {
+  future.apply::future_lapply(...)
+}
+
 #' Internal Function: Bootstrap Aggregation for Weights
 #'
 #' Performs bootstrap aggregation to stabilize weight estimates.
@@ -240,7 +245,9 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   boot_pos_index_sum_by_group <- NULL
   boot_neg_index_sum_by_group <- NULL
   boot_success <- NULL
+  boot_error_msg <- NULL
   completed_boots <- integer(0)
+  batch_errors <- character(0)
   
   if (use_checkpoint) {
     if (!dir.exists(checkpoint_dir)) {
@@ -265,6 +272,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
         boot_pos_index_sum_by_group <- checkpoint_data$boot_pos_index_sum_by_group
         boot_neg_index_sum_by_group <- checkpoint_data$boot_neg_index_sum_by_group
         boot_success <- checkpoint_data$boot_success
+        boot_error_msg <- checkpoint_data$boot_error_msg
         completed_boots <- checkpoint_data$completed_boots
         start_boot <- if (length(completed_boots) > 0) max(completed_boots) + 1 else 1
         if (verbose) message("Resuming from iteration ", start_boot, 
@@ -316,6 +324,9 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   # Bootstrap success tracking vector (restore from checkpoint or create new)
   if (is.null(boot_success)) {
     boot_success <- logical(n_boot)
+  }
+  if (is.null(boot_error_msg)) {
+    boot_error_msg <- rep(NA_character_, n_boot)
   }
   
   # Remaining bootstrap indices
@@ -432,6 +443,52 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
       completed_boots <<- c(completed_boots, indices)
       invisible(NULL)
     }
+
+    store_boot_result <- function(b, result) {
+      if (isTRUE(result$success)) {
+        boot_pos_coef[b, ] <<- result$pos_coef
+        boot_neg_coef[b, ] <<- result$neg_coef
+        if (!is.null(boot_cov_coef) && !is.null(result$cov_coef)) {
+          boot_cov_coef[b, ] <<- result$cov_coef
+        }
+        boot_pos_index_sum[b] <<- result$pos_index_sum
+        boot_neg_index_sum[b] <<- result$neg_index_sum
+        if (!is.null(boot_pos_index_sum_by_group) &&
+            !is.null(result$pos_index_sum_by_group)) {
+          for (grp in names(boot_pos_index_sum_by_group)) {
+            boot_pos_index_sum_by_group[[grp]][b] <<-
+              result$pos_index_sum_by_group[[grp]]
+            boot_neg_index_sum_by_group[[grp]][b] <<-
+              result$neg_index_sum_by_group[[grp]]
+          }
+        }
+        boot_success[b] <<- TRUE
+        boot_error_msg[b] <<- NA_character_
+        return(TRUE)
+      }
+
+      boot_error_msg[b] <<- result$error_msg %||% "Unknown bootstrap failure"
+      FALSE
+    }
+
+    run_sequential_boot_batch <- function(batch_indices) {
+      batch_completed <- integer(0)
+      for (b in batch_indices) {
+        result <- run_single_boot(
+          b, X_quantile, y, cov_matrix, var_names, cov_names,
+          groups, group_by_compound, group_structure,
+          penalize_covariates, family, lambda, nfolds,
+          stratified = stratified,
+          obs_weights = obs_weights,
+          ...
+        )
+        if (store_boot_result(b, result)) {
+          batch_completed <- c(batch_completed, b)
+        }
+      }
+      append_completed_boots(batch_completed)
+      batch_completed
+    }
     
     save_checkpoint <- function() {
       if (use_checkpoint) {
@@ -444,6 +501,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
           boot_pos_index_sum_by_group = boot_pos_index_sum_by_group,
           boot_neg_index_sum_by_group = boot_neg_index_sum_by_group,
           boot_success = boot_success,
+          boot_error_msg = boot_error_msg,
           completed_boots = completed_boots,
           n_boot = n_boot,
           var_names = var_names,
@@ -477,7 +535,6 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
         
         # Checkpoint via batch processing
         batch_start <- 1
-        batch_errors <- character(0)
         
         while (batch_start <= length(remaining_boots)) {
           batch_end <- min(batch_start + checkpoint_interval - 1, length(remaining_boots))
@@ -485,7 +542,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
           
           # Execute batch (catch batch-level errors too)
           batch_result <- tryCatch({
-            batch_results <- future.apply::future_lapply(
+            batch_results <- .future_lapply(
               batch_indices,
               function(b) {
                 run_single_boot(b, X_quantile, y, cov_matrix, var_names, cov_names,
@@ -507,25 +564,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
             batch_completed <- integer(0)
             for (i in seq_along(batch_indices)) {
               b <- batch_indices[i]
-              if (batch_result$results[[i]]$success) {
-                boot_pos_coef[b, ] <- batch_result$results[[i]]$pos_coef
-                boot_neg_coef[b, ] <- batch_result$results[[i]]$neg_coef
-                if (!is.null(boot_cov_coef) &&
-                    !is.null(batch_result$results[[i]]$cov_coef)) {
-                  boot_cov_coef[b, ] <- batch_result$results[[i]]$cov_coef
-                }
-                boot_pos_index_sum[b] <- batch_result$results[[i]]$pos_index_sum
-                boot_neg_index_sum[b] <- batch_result$results[[i]]$neg_index_sum
-                if (!is.null(boot_pos_index_sum_by_group) &&
-                    !is.null(batch_result$results[[i]]$pos_index_sum_by_group)) {
-                  for (grp in names(boot_pos_index_sum_by_group)) {
-                    boot_pos_index_sum_by_group[[grp]][b] <-
-                      batch_result$results[[i]]$pos_index_sum_by_group[[grp]]
-                    boot_neg_index_sum_by_group[[grp]][b] <-
-                      batch_result$results[[i]]$neg_index_sum_by_group[[grp]]
-                  }
-                }
-                boot_success[b] <- TRUE
+              if (store_boot_result(b, batch_result$results[[i]])) {
                 batch_completed <- c(batch_completed, b)
               }
             }
@@ -540,6 +579,12 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
             if (verbose) {
               message("  Warning: Batch ", batch_start, "-", batch_end, " failed: ", 
                       substr(batch_result$error_msg, 1, 100))
+              message("  Retrying failed parallel batch sequentially.")
+            }
+            batch_completed <- run_sequential_boot_batch(batch_indices)
+            if (verbose) {
+              message("  Sequential retry recovered ", length(batch_completed), "/",
+                      length(batch_indices), " bootstrap iteration(s).")
             }
           }
           
@@ -569,33 +614,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
       
       for (i in seq_along(remaining_boots)) {
         b <- remaining_boots[i]
-        
-        result <- run_single_boot(
-          b, X_quantile, y, cov_matrix, var_names, cov_names,
-          groups, group_by_compound, group_structure,
-          penalize_covariates, family, lambda, nfolds, 
-          stratified = stratified,
-          obs_weights = obs_weights,
-          ...
-        )
-        
-        if (result$success) {
-          boot_pos_coef[b, ] <- result$pos_coef
-          boot_neg_coef[b, ] <- result$neg_coef
-          if (!is.null(boot_cov_coef) && !is.null(result$cov_coef)) {
-            boot_cov_coef[b, ] <- result$cov_coef
-          }
-          boot_pos_index_sum[b] <- result$pos_index_sum
-          boot_neg_index_sum[b] <- result$neg_index_sum
-          if (!is.null(boot_pos_index_sum_by_group) && !is.null(result$pos_index_sum_by_group)) {
-            for (grp in names(boot_pos_index_sum_by_group)) {
-              boot_pos_index_sum_by_group[[grp]][b] <- result$pos_index_sum_by_group[[grp]]
-              boot_neg_index_sum_by_group[[grp]][b] <- result$neg_index_sum_by_group[[grp]]
-            }
-          }
-          boot_success[b] <- TRUE
-          append_completed_boots(b)
-        }
+        run_sequential_boot_batch(b)
         
         # Save checkpoint
         if (use_checkpoint && (i %% checkpoint_interval == 0 || i == length(remaining_boots))) {
@@ -679,7 +698,15 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
       ci_upper_cov <- NULL
     }
   } else {
-    stop("All bootstrap iterations failed.")
+    representative_errors <- unique(stats::na.omit(c(boot_error_msg, batch_errors)))
+    if (length(representative_errors) > 0) {
+      stop(
+        "All bootstrap iterations failed. Representative error(s): ",
+        paste(utils::head(representative_errors, 3), collapse = "; "),
+        call. = FALSE
+      )
+    }
+    stop("All bootstrap iterations failed.", call. = FALSE)
   }
   
   # Remove checkpoint file
@@ -715,6 +742,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
     boot_pos_index_sum_by_group = boot_pos_index_sum_by_group,
     boot_neg_index_sum_by_group = boot_neg_index_sum_by_group,
     boot_success = boot_success,
+    boot_error_msg = boot_error_msg,
     n_successful = successful_boots
   ))
 }
