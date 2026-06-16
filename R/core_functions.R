@@ -273,7 +273,9 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
         boot_neg_index_sum_by_group <- checkpoint_data$boot_neg_index_sum_by_group
         boot_success <- checkpoint_data$boot_success
         boot_error_msg <- checkpoint_data$boot_error_msg
-        completed_boots <- checkpoint_data$completed_boots
+        # Older checkpoints may have marked failed batch indices as completed.
+        # Trust the success vector so failed iterations are retried.
+        completed_boots <- which(!is.na(boot_success) & boot_success)
         start_boot <- if (length(completed_boots) > 0) max(completed_boots) + 1 else 1
         if (verbose) message("Resuming from iteration ", start_boot, 
                             " (", length(completed_boots), " completed)")
@@ -535,56 +537,68 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
         
         # Checkpoint via batch processing
         batch_start <- 1
+        parallel_degraded <- FALSE
         
         while (batch_start <= length(remaining_boots)) {
           batch_end <- min(batch_start + checkpoint_interval - 1, length(remaining_boots))
           batch_indices <- remaining_boots[batch_start:batch_end]
           
-          # Execute batch (catch batch-level errors too)
-          batch_result <- tryCatch({
-            batch_results <- .future_lapply(
-              batch_indices,
-              function(b) {
-                run_single_boot(b, X_quantile, y, cov_matrix, var_names, cov_names,
-                                groups, group_by_compound, group_structure,
-                                penalize_covariates, family, lambda, nfolds,
-                                stratified = stratified,
-                                obs_weights = obs_weights,
-                                ...)
-              },
-              future.seed = TRUE
-            )
-            list(success = TRUE, results = batch_results)
-          }, error = function(e) {
-            list(success = FALSE, error_msg = e$message)
-          })
-          
-          if (batch_result$success) {
-            # Store results
-            batch_completed <- integer(0)
-            for (i in seq_along(batch_indices)) {
-              b <- batch_indices[i]
-              if (store_boot_result(b, batch_result$results[[i]])) {
-                batch_completed <- c(batch_completed, b)
-              }
-            }
-            append_completed_boots(batch_completed)
-            
-            # Free memory
-            rm(batch_result)
-            gc(verbose = FALSE)
-          } else {
-            # Entire batch failed
-            batch_errors <- c(batch_errors, batch_result$error_msg)
-            if (verbose) {
-              message("  Warning: Batch ", batch_start, "-", batch_end, " failed: ", 
-                      substr(batch_result$error_msg, 1, 100))
-              message("  Retrying failed parallel batch sequentially.")
-            }
+          if (parallel_degraded) {
             batch_completed <- run_sequential_boot_batch(batch_indices)
             if (verbose) {
-              message("  Sequential retry recovered ", length(batch_completed), "/",
-                      length(batch_indices), " bootstrap iteration(s).")
+              message("  Parallel backend already degraded; ran batch sequentially (",
+                      length(batch_completed), "/", length(batch_indices),
+                      " recovered).")
+            }
+          } else {
+            # Execute batch (catch batch-level errors too)
+            batch_result <- tryCatch({
+              batch_results <- .future_lapply(
+                batch_indices,
+                function(b) {
+                  run_single_boot(b, X_quantile, y, cov_matrix, var_names, cov_names,
+                                  groups, group_by_compound, group_structure,
+                                  penalize_covariates, family, lambda, nfolds,
+                                  stratified = stratified,
+                                  obs_weights = obs_weights,
+                                  ...)
+                },
+                future.seed = TRUE
+              )
+              list(success = TRUE, results = batch_results)
+            }, error = function(e) {
+              list(success = FALSE, error_msg = e$message)
+            })
+
+            if (batch_result$success) {
+              # Store results
+              batch_completed <- integer(0)
+              for (i in seq_along(batch_indices)) {
+                b <- batch_indices[i]
+                if (store_boot_result(b, batch_result$results[[i]])) {
+                  batch_completed <- c(batch_completed, b)
+                }
+              }
+              append_completed_boots(batch_completed)
+
+              # Free memory
+              rm(batch_result)
+              gc(verbose = FALSE)
+            } else {
+              # Entire batch failed
+              batch_errors <- c(batch_errors, batch_result$error_msg)
+              parallel_degraded <- TRUE
+              if (verbose) {
+                message("  Warning: Batch ", batch_start, "-", batch_end, " failed: ",
+                        substr(batch_result$error_msg, 1, 100))
+                message("  Retrying failed parallel batch sequentially and degrading ",
+                        "remaining batches to sequential.")
+              }
+              batch_completed <- run_sequential_boot_batch(batch_indices)
+              if (verbose) {
+                message("  Sequential retry recovered ", length(batch_completed), "/",
+                        length(batch_indices), " bootstrap iteration(s).")
+              }
             }
           }
           
@@ -743,6 +757,8 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
     boot_neg_index_sum_by_group = boot_neg_index_sum_by_group,
     boot_success = boot_success,
     boot_error_msg = boot_error_msg,
+    parallel_batch_errors = unique(batch_errors),
+    n_parallel_batch_failures = length(batch_errors),
     n_successful = successful_boots
   ))
 }

@@ -657,6 +657,9 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       ci_lower_cov = boot_result$ci_lower_cov,
       ci_upper_cov = boot_result$ci_upper_cov,
       boot_success = boot_result$boot_success,
+      boot_error_msg = boot_result$boot_error_msg,
+      parallel_batch_errors = boot_result$parallel_batch_errors,
+      n_parallel_batch_failures = boot_result$n_parallel_batch_failures,
       n_successful = boot_result$n_successful
     )
 

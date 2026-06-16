@@ -274,6 +274,7 @@ sglwqs_mice <- function(mids_obj,
   )
 
   fits <- vector("list", m)
+  imputation_error_msg <- rep(NA_character_, m)
 
   for (i in seq_len(m)) {
     if (verbose) {
@@ -327,7 +328,8 @@ sglwqs_mice <- function(mids_obj,
         ...
       )
     }, error = function(e) {
-      warning("Imputation ", i, " failed: ", e$message)
+      imputation_error_msg[i] <<- conditionMessage(e)
+      warning("Imputation ", i, " failed: ", conditionMessage(e), call. = FALSE)
       return(NULL)
     })
   }
@@ -336,7 +338,15 @@ sglwqs_mice <- function(mids_obj,
   n_successful <- length(successful_fits)
 
   if (n_successful == 0) {
-    stop("All imputations failed")
+    representative_errors <- unique(stats::na.omit(imputation_error_msg))
+    if (length(representative_errors) > 0) {
+      stop(
+        "All imputations failed. Representative error(s): ",
+        paste(utils::head(representative_errors, 3), collapse = "; "),
+        call. = FALSE
+      )
+    }
+    stop("All imputations failed", call. = FALSE)
   }
 
   if (n_successful < m) {
@@ -351,6 +361,7 @@ sglwqs_mice <- function(mids_obj,
 
   result <- list(
     fits = fits,
+    imputation_error_msg = imputation_error_msg,
     pooled = pooled,
     m = m,
     n_successful = n_successful,

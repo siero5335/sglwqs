@@ -19,6 +19,10 @@
 * Parallel bootstrap batches now fall back to sequential retry when the future
   backend fails at the batch level, and representative bootstrap errors are
   retained for diagnostics.
+* Bootstrap diagnostics now retain per-iteration error messages and
+  batch-level future backend failures in returned objects; failed parallel
+  backends degrade remaining batches to sequential execution. Multiple
+  imputation fits also retain imputation-level error messages.
 * Added `vcov.sglwqs()` for downstream refit and bootstrap-only covariance
   extraction.
 

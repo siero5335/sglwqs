@@ -132,6 +132,10 @@ test_that("sglwqs bootstrap keeps aggregated covariate summaries but omits matri
   expect_true(is.numeric(fit$boot_info$mean_cov_coef))
   expect_true(all(c("age", "bmi") %in% names(fit$boot_info$mean_cov_coef)))
   expect_null(fit$boot_info$boot_cov_coef)
+  expect_equal(length(fit$boot_info$boot_error_msg), 10)
+  expect_true(all(is.na(fit$boot_info$boot_error_msg)))
+  expect_equal(fit$boot_info$n_parallel_batch_failures, 0L)
+  expect_identical(fit$boot_info$parallel_batch_errors, character(0))
 })
 
 test_that("summary_bootstrap covariate intervals respect requested confidence level", {
@@ -247,10 +251,73 @@ test_that("parallel bootstrap retries failed future batches sequentially", {
     .package = "sglwqs"
   )
 
-  expect_equal(future_calls, 2L)
+  expect_equal(future_calls, 1L)
   expect_equal(fit_calls, 4L)
   expect_equal(res$n_successful, 4L)
   expect_true(all(res$boot_success))
+  expect_equal(res$n_parallel_batch_failures, 1L)
+  expect_match(res$parallel_batch_errors[[1]], "simulated future backend failure")
+  expect_true(all(is.na(res$boot_error_msg)))
+})
+
+test_that("checkpoint completed_boots is sanitized against boot_success", {
+  checkpoint_dir <- tempfile("sglwqs-old-checkpoint-")
+  dir.create(checkpoint_dir)
+
+  var_names <- c("x1", "x2")
+  old_checkpoint <- list(
+    boot_pos_coef = matrix(0, nrow = 4, ncol = 2, dimnames = list(NULL, var_names)),
+    boot_neg_coef = matrix(0, nrow = 4, ncol = 2, dimnames = list(NULL, var_names)),
+    boot_cov_coef = NULL,
+    boot_pos_index_sum = rep(NA_real_, 4),
+    boot_neg_index_sum = rep(NA_real_, 4),
+    boot_pos_index_sum_by_group = NULL,
+    boot_neg_index_sum_by_group = NULL,
+    boot_success = rep(FALSE, 4),
+    boot_error_msg = rep("old failed batch", 4),
+    completed_boots = seq_len(4),
+    n_boot = 4,
+    var_names = var_names
+  )
+  saveRDS(old_checkpoint, file.path(checkpoint_dir, "bootstrap_checkpoint.rds"))
+
+  X_quantile <- matrix(runif(24), ncol = 2)
+  colnames(X_quantile) <- var_names
+  y <- rnorm(12)
+  fit_calls <- 0L
+
+  res <- testthat::with_mocked_bindings(
+    sglwqs:::bootstrap_sgl(
+      X_quantile = X_quantile,
+      y = y,
+      cov_matrix = NULL,
+      var_names = var_names,
+      cov_names = NULL,
+      groups = NULL,
+      group_by_compound = FALSE,
+      group_structure = "direction",
+      penalize_covariates = FALSE,
+      family = "gaussian",
+      lambda = "lambda.min",
+      nfolds = 2,
+      n_boot = 4,
+      seed = 889,
+      verbose = FALSE,
+      parallel = FALSE,
+      checkpoint_dir = checkpoint_dir,
+      cleanup_checkpoint = TRUE
+    ),
+    fit_sgl_core = function(...) {
+      fit_calls <<- fit_calls + 1L
+      list(pos_coef = c(x1 = 0.3, x2 = 0), neg_coef = c(x1 = 0, x2 = 0.1), cov_coef = NULL)
+    },
+    .package = "sglwqs"
+  )
+
+  expect_equal(fit_calls, 4L)
+  expect_equal(res$n_successful, 4L)
+  expect_true(all(res$boot_success))
+  expect_true(all(is.na(res$boot_error_msg)))
 })
 
 test_that("bootstrap checkpoint restores boot_cov_coef and MI pooling prefers bootstrap means", {
