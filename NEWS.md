@@ -25,6 +25,12 @@
   imputation fits also retain imputation-level error messages.
 * Added `vcov.sglwqs()` for downstream refit and bootstrap-only covariance
   extraction.
+* Minimal complex-survey support for Gaussian and binomial full-data refits now
+  uses `survey_design` sampling weights for quantile cutpoints, mean-normalized
+  design weights for sparse-group selection, and the original survey design for
+  downstream `survey::svyglm()` inference. Survey mode validates row alignment
+  via `analysis_id` or stable row names and continues to reject validation,
+  bootstrap, and parallel survey workflows.
 
 # sglwqs 0.8.13
 

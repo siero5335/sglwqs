@@ -54,12 +54,17 @@
 #' @param obs_weights Optional numeric vector of observation weights used in
 #'   the sparse-group selection loss.
 #' @param quantile_weights Optional numeric vector of weights used to compute
-#'   quantile cutpoints. Defaults to \code{obs_weights}.
+#'   quantile cutpoints. When omitted, defaults to \code{survey_design}
+#'   sampling weights when a survey design is supplied, then \code{obs_weights},
+#'   otherwise unweighted.
 #' @param refit Character. One of \code{"none"}, \code{"full"}, or
 #'   \code{"validation"}.
 #' @param refit_engine Character. One of \code{"glm"} or \code{"svyglm"}.
 #' @param survey_design Optional pre-constructed \code{svydesign} or
 #'   \code{svrepdesign} object used when \code{refit_engine = "svyglm"}.
+#' @param analysis_id Optional analysis-row identifier used to verify alignment
+#'   between the modeling data and \code{survey_design}. If \code{data} is
+#'   supplied, a single column name may be used.
 #' @param data Optional data frame or matrix used to resolve \code{X}, \code{y},
 #'   \code{covariates}, \code{exposure_vars}, \code{outcome_var}, and
 #'   \code{covariate_vars} by column name/index.
@@ -227,10 +232,11 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
                    seed = NULL,
                    verbose = TRUE,
                    obs_weights = NULL,
-                   quantile_weights = obs_weights,
+                   quantile_weights = NULL,
                    refit = c("none", "full", "validation"),
                    refit_engine = c("glm", "svyglm"),
                    survey_design = NULL,
+                   analysis_id = NULL,
                    minor_threshold = 0.10,
                    data = NULL,
                    formula = NULL,
@@ -241,6 +247,8 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
   
   refit_missing <- missing(refit)
   refit_engine_missing <- missing(refit_engine)
+  obs_weights_supplied <- !missing(obs_weights) && !is.null(obs_weights)
+  quantile_weights_supplied <- !missing(quantile_weights) && !is.null(quantile_weights)
   family <- match.arg(family)
   refit <- if (refit_missing) "none" else match.arg(refit)
   refit_engine <- if (refit_engine_missing) {
@@ -283,6 +291,13 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
   
   survey_mode <- identical(refit_engine, "svyglm") || !is.null(survey_design)
   if (survey_mode) {
+    if (!family %in% c("gaussian", "binomial")) {
+      stop(
+        "Survey refit is currently supported only for `family = \"gaussian\"` ",
+        "or `family = \"binomial\"`.",
+        call. = FALSE
+      )
+    }
     if (!identical(refit, "full")) {
       stop(
         "Survey refit is currently supported only for `refit = \"full\"` without bootstrap or validation split.",
@@ -354,6 +369,12 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       stop("`covariate_vars` requires `data`.")
     }
     covariate_vars <- .resolve_data_var_spec(covariate_vars, data_names, "covariate_vars")
+  }
+
+  if (!is.null(analysis_id) && !is.null(data_frame) &&
+      is.character(analysis_id) && length(analysis_id) == 1L &&
+      analysis_id %in% data_names) {
+    analysis_id <- data_frame[[analysis_id]]
   }
 
   if (!is.null(X) && !is.null(data_frame) && .is_data_var_selector(X, length(data_names))) {
@@ -526,9 +547,56 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
   n <- nrow(X)
   p <- ncol(X)
   q <- if (is.null(cov_matrix)) 0 else ncol(cov_matrix)
+  analysis_id <- .validate_analysis_id(analysis_id, n)
   obs_weights <- .validate_obs_weights(obs_weights, n)
-  if (!is.null(quantile_weights)) {
+  analysis_weights <- NULL
+  quantile_weights_source <- "unweighted"
+  survey_info <- NULL
+
+  if (survey_mode) {
+    .validate_survey_design(survey_design)
+    alignment_df <- data.frame(.row = seq_len(n))
+    rownames(alignment_df) <- rownames(X)
+    .check_survey_alignment(
+      survey_design = survey_design,
+      glm_data = alignment_df,
+      analysis_id = analysis_id,
+      context = "analysis"
+    )
+    design_weights <- .extract_analysis_weights(survey_design)
+    if (is.null(design_weights)) {
+      stop(
+        "Could not extract sampling weights from `survey_design`. ",
+        "Build the design with explicit sampling weights before using survey mode.",
+        call. = FALSE
+      )
+    }
+    design_weights <- .validate_obs_weights(design_weights, n)
+    analysis_weights <- design_weights
+    if (obs_weights_supplied && !isTRUE(all.equal(obs_weights, design_weights))) {
+      warning(
+        "`survey_design` sampling weights are used for survey-mode selection; ",
+        "explicit `obs_weights` are ignored.",
+        call. = FALSE
+      )
+    }
+    obs_weights <- design_weights / mean(design_weights, na.rm = TRUE)
+    survey_info <- list(
+      refit_engine = refit_engine,
+      degf = .survey_design_degf(survey_design),
+      weights_normalized = TRUE
+    )
+  }
+
+  if (quantile_weights_supplied) {
     quantile_weights <- .validate_quantile_weights(quantile_weights, n)
+    quantile_weights_source <- "explicit"
+  } else if (survey_mode) {
+    quantile_weights <- analysis_weights
+    quantile_weights_source <- "survey_design"
+  } else if (!is.null(obs_weights)) {
+    quantile_weights <- obs_weights
+    quantile_weights_source <- "obs_weights"
   }
   
   # ----- Train/Validation Split -----
@@ -842,6 +910,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       group_inference = !is.null(groups),
       engine = refit_engine,
       survey_design = survey_design,
+      analysis_id = analysis_id,
       obs_weights = obs_weights,
       excluded_directions = excluded_directions
     )
@@ -896,6 +965,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     refit = refit,
     refit_engine = refit_engine,
     survey_mode = survey_mode,
+    survey_info = survey_info,
     
     # Data info
     X_quantile = X_quantile,
@@ -914,7 +984,10 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     validation_info = validation_info,
     refit_info = refit_info,
     obs_weights = obs_weights,
+    analysis_id = analysis_id,
+    analysis_weights = analysis_weights,
     quantile_weights = quantile_weights,
+    quantile_weights_source = quantile_weights_source,
     
     # Minor direction exclusion
     minor_threshold = minor_threshold,

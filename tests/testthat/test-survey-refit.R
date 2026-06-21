@@ -150,11 +150,14 @@ test_that("full svyglm refit works when survey is available", {
   testthat::skip_if_not_installed("survey")
   
   dat <- make_simple_data(n = 160, seed = 40)
-  cov_df <- data.frame(age = rnorm(nrow(dat)))
+  rownames(dat) <- paste0("id", seq_len(nrow(dat)))
+  cov_df <- data.frame(age = rnorm(nrow(dat)), row.names = rownames(dat))
   design_df <- data.frame(
     y = dat$y,
     age = cov_df$age,
-    w = runif(nrow(dat), 0.5, 2)
+    w = runif(nrow(dat), 0.5, 2),
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
   )
   des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
   
@@ -165,6 +168,7 @@ test_that("full svyglm refit works when survey is available", {
     refit = "full",
     refit_engine = "svyglm",
     survey_design = des,
+    analysis_id = rownames(dat),
     nfolds = 3,
     nlambda = 20,
     seed = 101,
@@ -173,6 +177,30 @@ test_that("full svyglm refit works when survey is available", {
   
   expect_equal(fit$refit_info$engine, "svyglm")
   expect_s3_class(fit$refit_info$refit_fit, "svyglm")
+  expect_equal(fit$analysis_id, rownames(dat))
+  expect_equal(as.numeric(fit$analysis_weights), design_df$w)
+  expect_equal(as.numeric(fit$quantile_weights), design_df$w)
+  expect_equal(fit$quantile_weights_source, "survey_design")
+  expect_equal(as.numeric(fit$obs_weights), design_df$w / mean(design_df$w))
+  expect_true(is.list(fit$survey_info))
+
+  refit_data <- data.frame(
+    fit$refit_info$wqs_indices,
+    y = dat$y,
+    age = cov_df$age,
+    check.names = FALSE
+  )
+  manual <- survey::svyglm(
+    stats::as.formula(fit$refit_info$formula),
+    design = sglwqs:::.inject_design_variables(des, refit_data),
+    family = stats::gaussian()
+  )
+  expect_equal(stats::coef(fit$refit_info$refit_fit), stats::coef(manual))
+  expect_equal(summary(fit$refit_info$refit_fit)$coefficients, summary(manual)$coefficients)
+  expect_equal(
+    as.numeric(stats::predict(fit$refit_info$refit_fit, newdata = refit_data, type = "link")),
+    as.numeric(stats::predict(manual, newdata = refit_data, type = "link"))
+  )
   expect_no_error(generics::glance(fit))
   expect_no_error(generics::augment(
     fit,
@@ -234,15 +262,18 @@ test_that("survey binomial refit uses quasibinomial and supports prediction unce
   testthat::skip_if_not_installed("survey")
   
   dat <- make_binomial_data(n = 220, seed = 66)
-  cov_df <- data.frame(age = rnorm(nrow(dat)))
+  rownames(dat) <- paste0("bin", seq_len(nrow(dat)))
+  cov_df <- data.frame(age = rnorm(nrow(dat)), row.names = rownames(dat))
   design_df <- data.frame(
     y = dat$y,
     age = cov_df$age,
-    w = runif(nrow(dat), 0.5, 2)
+    w = runif(nrow(dat), 0.5, 2),
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
   )
   des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
   
-  fit <- sglwqs(
+  fit <- suppressWarnings(sglwqs(
     X = dat[, c("x1", "x2", "x3")],
     y = dat$y,
     covariates = cov_df,
@@ -250,13 +281,29 @@ test_that("survey binomial refit uses quasibinomial and supports prediction unce
     refit = "full",
     refit_engine = "svyglm",
     survey_design = des,
+    analysis_id = rownames(dat),
     nfolds = 3,
     nlambda = 20,
     seed = 321,
     verbose = FALSE
-  )
+  ))
   
   expect_equal(fit$refit_info$refit_fit$family$family, "quasibinomial")
+  expect_equal(as.numeric(fit$analysis_weights), design_df$w)
+
+  refit_data <- data.frame(
+    fit$refit_info$wqs_indices,
+    y = dat$y,
+    age = cov_df$age,
+    check.names = FALSE
+  )
+  manual <- survey::svyglm(
+    stats::as.formula(fit$refit_info$formula),
+    design = sglwqs:::.inject_design_variables(des, refit_data),
+    family = stats::quasibinomial()
+  )
+  expect_equal(stats::coef(fit$refit_info$refit_fit), stats::coef(manual))
+  expect_equal(summary(fit$refit_info$refit_fit)$coefficients, summary(manual)$coefficients)
   
   new_exp <- dat[1:15, c("x1", "x2", "x3")]
   new_cov <- cov_df[1:15, , drop = FALSE]
@@ -282,12 +329,24 @@ test_that("survey binomial refit uses quasibinomial and supports prediction unce
   
   se_link <- predict(fit, newdata = new_exp, covariates = new_cov, type = "link", se.fit = TRUE)
   se_resp <- predict(fit, newdata = new_exp, covariates = new_cov, type = "response", se.fit = TRUE)
+  expected_se_link <- sglwqs:::.extract_prediction_with_se(stats::predict(
+    fit$refit_info$refit_fit,
+    newdata = pred_data,
+    type = "link",
+    se.fit = TRUE
+  ))
+  expected_se_resp <- sglwqs:::.extract_prediction_with_se(stats::predict(
+    fit$refit_info$refit_fit,
+    newdata = pred_data,
+    type = "response",
+    se.fit = TRUE
+  ))
   expect_equal(se_link$source, "svyglm_refit")
   expect_equal(se_resp$source, "svyglm_refit")
   expect_length(se_link$fit, 15)
   expect_length(se_resp$fit, 15)
-  expect_true(all(is.finite(se_link$se.fit)))
-  expect_true(all(is.finite(se_resp$se.fit)))
+  expect_equal(se_link$se.fit, expected_se_link$se.fit)
+  expect_equal(se_resp$se.fit, expected_se_resp$se.fit)
   
   pred_int <- predict_interval(
     fit,
@@ -317,7 +376,7 @@ test_that("survey mode blocks unweighted metrics and calibration and checks row 
   )
   des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
   
-  fit <- sglwqs(
+  fit <- suppressWarnings(sglwqs(
     X = dat[, c("x1", "x2", "x3")],
     y = dat$y,
     covariates = cov_df,
@@ -325,11 +384,12 @@ test_that("survey mode blocks unweighted metrics and calibration and checks row 
     refit = "full",
     refit_engine = "svyglm",
     survey_design = des,
+    analysis_id = rownames(dat),
     nfolds = 3,
     nlambda = 20,
     seed = 88,
     verbose = FALSE
-  )
+  ))
   
   expect_error(validation_metrics(fit), "Survey-aware predictive metrics")
   expect_error(calibrate(fit), "Survey-aware calibration")
@@ -347,12 +407,13 @@ test_that("survey mode blocks unweighted metrics and calibration and checks row 
       refit = "full",
       refit_engine = "svyglm",
       survey_design = bad_des,
+      analysis_id = rownames(dat),
       nfolds = 3,
       nlambda = 20,
       seed = 89,
       verbose = FALSE
     ),
-    "Row names of `survey_design\\$variables` do not match"
+    "`analysis_id` does not match"
   )
 })
 
@@ -363,7 +424,8 @@ test_that("svyglm refit with stratified clustered design produces design-based S
   set.seed(500)
   n <- 200
   dat <- make_simple_data(n = n, seed = 500)
-  cov_df <- data.frame(age = rnorm(n))
+  rownames(dat) <- paste0("s", seq_len(n))
+  cov_df <- data.frame(age = rnorm(n), row.names = rownames(dat))
 
   # Stratified clustered design (NHANES-like)
   strata <- rep(1:10, each = n / 10)
@@ -373,7 +435,9 @@ test_that("svyglm refit with stratified clustered design produces design-based S
     age = cov_df$age,
     w = runif(n, 0.5, 3),
     strata = strata,
-    cluster = cluster
+    cluster = cluster,
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
   )
   des <- survey::svydesign(
     ids = ~cluster, strata = ~strata, weights = ~w,
@@ -387,6 +451,7 @@ test_that("svyglm refit with stratified clustered design produces design-based S
     refit = "full",
     refit_engine = "svyglm",
     survey_design = des,
+    analysis_id = rownames(dat),
     nfolds = 3,
     nlambda = 20,
     seed = 501,
@@ -423,7 +488,8 @@ test_that("svyglm prediction intervals use survey residual degrees of freedom", 
   set.seed(700)
   n <- 180
   dat <- make_simple_data(n = n, seed = 700)
-  cov_df <- data.frame(age = rnorm(n))
+  rownames(dat) <- paste0("pi", seq_len(n))
+  cov_df <- data.frame(age = rnorm(n), row.names = rownames(dat))
   strata <- rep(1:6, each = n / 6)
   cluster <- rep(1:(n / 5), each = 5)
   design_df <- data.frame(
@@ -431,7 +497,9 @@ test_that("svyglm prediction intervals use survey residual degrees of freedom", 
     age = cov_df$age,
     w = runif(n, 0.5, 2.5),
     strata = strata,
-    cluster = cluster
+    cluster = cluster,
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
   )
   des <- survey::svydesign(
     ids = ~cluster, strata = ~strata, weights = ~w,
@@ -445,6 +513,7 @@ test_that("svyglm prediction intervals use survey residual degrees of freedom", 
     refit = "full",
     refit_engine = "svyglm",
     survey_design = des,
+    analysis_id = rownames(dat),
     nfolds = 3,
     nlambda = 20,
     seed = 701,

@@ -15,6 +15,7 @@ refit_model(
   group_inference = TRUE,
   engine = c("glm", "svyglm"),
   survey_design = NULL,
+  analysis_id = NULL,
   obs_weights = NULL,
   excluded_directions = list()
 )
@@ -39,6 +40,9 @@ refit_model(
 \item{engine}{Character. One of \code{"glm"} or \code{"svyglm"}.}
 
 \item{survey_design}{Optional pre-constructed survey design object.}
+
+\item{analysis_id}{Optional analysis-row identifier used to verify alignment
+between \code{glm_data} and \code{survey_design}.}
 }
 \value{
 A list with refit results and extracted inference summaries.

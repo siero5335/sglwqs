@@ -30,10 +30,11 @@ sglwqs(
   seed = NULL,
   verbose = TRUE,
   obs_weights = NULL,
-  quantile_weights = obs_weights,
+  quantile_weights = NULL,
   refit = c("none", "full", "validation"),
   refit_engine = c("glm", "svyglm"),
   survey_design = NULL,
+  analysis_id = NULL,
   minor_threshold = 0.1,
   data = NULL,
   formula = NULL,
@@ -118,7 +119,9 @@ train/validation summaries (default: FALSE).}
 the sparse-group selection loss.}
 
 \item{quantile_weights}{Optional numeric vector of weights used to compute
-quantile cutpoints. Defaults to \code{obs_weights}.}
+quantile cutpoints. When omitted, defaults to \code{survey_design}
+sampling weights when a survey design is supplied, then \code{obs_weights},
+otherwise unweighted.}
 
 \item{refit}{Character. One of \code{"none"}, \code{"full"}, or
 \code{"validation"}.}
@@ -127,6 +130,10 @@ quantile cutpoints. Defaults to \code{obs_weights}.}
 
 \item{survey_design}{Optional pre-constructed \code{svydesign} or
 \code{svrepdesign} object used when \code{refit_engine = "svyglm"}.}
+
+\item{analysis_id}{Optional analysis-row identifier used to verify alignment
+between the modeling data and \code{survey_design}. If \code{data} is
+supplied, a single column name may be used.}
 
 \item{minor_threshold}{Numeric (0-1). When groups are specified and validation/refit
 is performed, group-direction indices whose coefficient mass ratio

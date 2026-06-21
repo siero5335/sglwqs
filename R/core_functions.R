@@ -778,6 +778,8 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
 #' @param group_inference Logical. Whether to include group-specific indices.
 #' @param engine Character. One of \code{"glm"} or \code{"svyglm"}.
 #' @param survey_design Optional pre-constructed survey design object.
+#' @param analysis_id Optional analysis-row identifier used to verify alignment
+#'   between \code{glm_data} and \code{survey_design}.
 #'
 #' @return A list with refit results and extracted inference summaries.
 #'
@@ -787,6 +789,7 @@ refit_model <- function(X_quantile, y, cov_matrix,
                         group_inference = TRUE,
                         engine = c("glm", "svyglm"),
                         survey_design = NULL,
+                        analysis_id = NULL,
                         obs_weights = NULL,
                         excluded_directions = list()) {
   engine <- match.arg(engine)
@@ -872,39 +875,13 @@ refit_model <- function(X_quantile, y, cov_matrix,
     if (is.null(survey_design)) {
       stop("`survey_design` must be provided when `engine = \"svyglm\"`.", call. = FALSE)
     }
-    if (!identical(nrow(survey_design$variables), nrow(glm_data))) {
-      stop(
-        "`survey_design` must have the same number of observations as the refit data. ",
-        "For NHANES analyses, build `survey_design` from the exact same final analysis dataset ",
-        "used for `sglwqs()` after all filtering and row ordering are finalized.",
-        call. = FALSE
-      )
-    }
-    design_row_names <- rownames(survey_design$variables)
-    data_row_names <- rownames(glm_data)
-    if (!is.null(design_row_names) && !is.null(data_row_names)) {
-      if (!identical(design_row_names, data_row_names)) {
-        stop(
-          "Row names of `survey_design$variables` do not match the refit data. ",
-          "For NHANES analyses, `survey_design` must be built from the exact same final analysis dataset ",
-          "in the same row order as the data passed to `sglwqs()`.",
-          call. = FALSE
-        )
-      }
-    } else {
-      warning(
-        "`survey_design` row names could not be checked. For NHANES analyses, ensure that ",
-        "`survey_design` was built from the exact same final analysis dataset in the same row order ",
-        "used by `sglwqs()`.",
-        call. = FALSE
-      )
-    }
-    
-    design_refit <- survey_design
-    design_refit$variables <- as.data.frame(design_refit$variables)
-    for (nm in names(glm_data)) {
-      design_refit$variables[[nm]] <- glm_data[[nm]]
-    }
+    .check_survey_alignment(
+      survey_design = survey_design,
+      glm_data = glm_data,
+      analysis_id = analysis_id,
+      context = "refit"
+    )
+    design_refit <- .inject_design_variables(survey_design, glm_data)
     refit_fit <- survey::svyglm(fit_formula, design = design_refit, family = glm_family)
   }
   
@@ -1029,6 +1006,21 @@ validation_glm <- function(X_quantile_val, y_val, cov_matrix_val,
 
 
 #' @keywords internal
+.validate_analysis_id <- function(analysis_id, n) {
+  if (is.null(analysis_id)) {
+    return(NULL)
+  }
+  if (length(analysis_id) != n) {
+    stop("`analysis_id` must have length equal to the number of observations.", call. = FALSE)
+  }
+  if (any(is.na(analysis_id))) {
+    stop("`analysis_id` must not contain missing values.", call. = FALSE)
+  }
+  as.character(analysis_id)
+}
+
+
+#' @keywords internal
 .validate_obs_weights <- function(obs_weights, n) {
   if (is.null(obs_weights)) {
     return(NULL)
@@ -1049,6 +1041,171 @@ validation_glm <- function(X_quantile_val, y_val, cov_matrix_val,
     stop("`obs_weights` must have positive total weight.", call. = FALSE)
   }
   obs_weights
+}
+
+
+#' @keywords internal
+.validate_survey_design <- function(survey_design) {
+  if (is.null(survey_design)) {
+    return(invisible(FALSE))
+  }
+  if (!inherits(survey_design, c("survey.design", "survey.design2", "svyrep.design"))) {
+    stop(
+      "`survey_design` must be a survey::svydesign() or survey::svrepdesign() object.",
+      call. = FALSE
+    )
+  }
+  if (is.null(survey_design$variables) || is.null(nrow(survey_design$variables))) {
+    stop("`survey_design` must contain a valid `variables` data frame.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+
+#' @keywords internal
+.has_automatic_rownames <- function(x) {
+  rn <- rownames(x)
+  is.null(rn) || identical(rn, as.character(seq_len(nrow(x))))
+}
+
+
+#' @keywords internal
+.survey_design_ids_for_alignment <- function(survey_design, analysis_id = NULL,
+                                             context = "refit") {
+  vars <- survey_design$variables
+  if (!is.null(vars[[".analysis_id"]])) {
+    return(as.character(vars[[".analysis_id"]]))
+  }
+
+  if (!is.null(analysis_id)) {
+    analysis_id <- as.character(analysis_id)
+    matching_cols <- names(vars)[vapply(vars, function(col) {
+      identical(as.character(col), analysis_id)
+    }, logical(1))]
+    if (length(matching_cols) > 0L) {
+      return(as.character(vars[[matching_cols[[1L]]]]))
+    }
+
+    if (!.has_automatic_rownames(vars)) {
+      return(as.character(rownames(vars)))
+    }
+
+    stop(
+      "`analysis_id` was supplied, but `survey_design` has no `.analysis_id` ",
+      "column, no variable matching `analysis_id`, and only automatic row names ",
+      "for ", context, " alignment. Add `.analysis_id` to the survey design data ",
+      "or give the design stable row names before running survey-aware analysis.",
+      call. = FALSE
+    )
+  }
+
+  if (.has_automatic_rownames(vars)) {
+    stop(
+      "`survey_design` alignment cannot be verified from automatic row names. ",
+      "Supply `analysis_id` and include matching IDs in `survey_design` ",
+      "via a `.analysis_id` column, a matching ID column, or stable row names.",
+      call. = FALSE
+    )
+  }
+
+  as.character(rownames(vars))
+}
+
+
+#' @keywords internal
+.check_survey_alignment <- function(survey_design, glm_data, analysis_id = NULL,
+                                    context = "refit") {
+  if (is.null(survey_design)) {
+    stop("`survey_design` must be provided when survey-aware refit is requested.", call. = FALSE)
+  }
+  .validate_survey_design(survey_design)
+  if (!identical(nrow(survey_design$variables), nrow(glm_data))) {
+    stop(
+      "`survey_design` must have the same number of observations as the ", context, " data. ",
+      "For NHANES analyses, build `survey_design` from the exact same final analysis dataset ",
+      "used for `sglwqs()` after all filtering and row ordering are finalized.",
+      call. = FALSE
+    )
+  }
+
+  if (!is.null(analysis_id)) {
+    design_ids <- .survey_design_ids_for_alignment(
+      survey_design,
+      analysis_id = analysis_id,
+      context = context
+    )
+    if (!identical(as.character(design_ids), as.character(analysis_id))) {
+      stop(
+        "`analysis_id` does not match the observation ordering in `survey_design`. ",
+        "Build `survey_design` from the exact same final analysis dataset used for analysis.",
+        call. = FALSE
+      )
+    }
+    return(invisible(TRUE))
+  }
+
+  if (.has_automatic_rownames(glm_data)) {
+    stop(
+      "`survey_design` alignment cannot be verified because the ", context,
+      " data have automatic row names. Supply `analysis_id` or stable row names ",
+      "on both the analysis data and `survey_design`.",
+      call. = FALSE
+    )
+  }
+  design_row_names <- .survey_design_ids_for_alignment(
+    survey_design,
+    analysis_id = NULL,
+    context = context
+  )
+  data_row_names <- rownames(glm_data)
+  if (!identical(design_row_names, data_row_names)) {
+    stop(
+      "Row names of `survey_design$variables` do not match the ", context, " data. ",
+      "For NHANES analyses, `survey_design` must be built from the exact same final analysis dataset ",
+      "in the same row order as the analysis data.",
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
+
+#' @keywords internal
+.inject_design_variables <- function(survey_design, glm_data) {
+  design_refit <- survey_design
+  design_refit$variables <- as.data.frame(design_refit$variables)
+  for (nm in names(glm_data)) {
+    design_refit$variables[[nm]] <- glm_data[[nm]]
+  }
+  design_refit
+}
+
+
+#' @keywords internal
+.extract_analysis_weights <- function(survey_design) {
+  if (is.null(survey_design)) {
+    return(NULL)
+  }
+  weights <- tryCatch(
+    stats::weights(survey_design, type = "sampling"),
+    error = function(e) {
+      tryCatch(stats::weights(survey_design), error = function(e2) NULL)
+    }
+  )
+  if (is.null(weights)) {
+    return(NULL)
+  }
+  as.numeric(weights)
+}
+
+
+#' @keywords internal
+.survey_design_degf <- function(design) {
+  if (is.null(design) || !requireNamespace("survey", quietly = TRUE)) {
+    return(NA_real_)
+  }
+  tryCatch(as.numeric(survey::degf(design)), error = function(e) NA_real_)
 }
 
 
