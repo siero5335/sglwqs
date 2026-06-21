@@ -31,6 +31,10 @@
   downstream `survey::svyglm()` inference. Survey mode validates row alignment
   via `analysis_id` or stable row names and continues to reject validation,
   bootstrap, and parallel survey workflows.
+* Revision follow-up: validation-demo wording now avoids the phrase "valid
+  inference", and survey-mode alignment checks now reject empty analysis IDs,
+  compare stable analysis row names against `analysis_id`, and carry stable
+  row-name IDs into downstream `svyglm` refits.
 
 # sglwqs 0.8.13
 

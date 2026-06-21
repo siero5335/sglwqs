@@ -1013,10 +1013,11 @@ validation_glm <- function(X_quantile_val, y_val, cov_matrix_val,
   if (length(analysis_id) != n) {
     stop("`analysis_id` must have length equal to the number of observations.", call. = FALSE)
   }
-  if (any(is.na(analysis_id))) {
-    stop("`analysis_id` must not contain missing values.", call. = FALSE)
+  analysis_id <- as.character(analysis_id)
+  if (any(is.na(analysis_id)) || any(!nzchar(analysis_id))) {
+    stop("`analysis_id` must not contain missing or empty values.", call. = FALSE)
   }
-  as.character(analysis_id)
+  analysis_id
 }
 
 
@@ -1129,12 +1130,22 @@ validation_glm <- function(X_quantile_val, y_val, cov_matrix_val,
   }
 
   if (!is.null(analysis_id)) {
+    analysis_id <- as.character(analysis_id)
+    if (!.has_automatic_rownames(glm_data) &&
+        !identical(analysis_id, as.character(rownames(glm_data)))) {
+      stop(
+        "`analysis_id` does not match the row names of the ", context, " data. ",
+        "When stable row names are present, they must identify the same rows ",
+        "in the same order as `analysis_id`.",
+        call. = FALSE
+      )
+    }
     design_ids <- .survey_design_ids_for_alignment(
       survey_design,
       analysis_id = analysis_id,
       context = context
     )
-    if (!identical(as.character(design_ids), as.character(analysis_id))) {
+    if (!identical(as.character(design_ids), analysis_id)) {
       stop(
         "`analysis_id` does not match the observation ordering in `survey_design`. ",
         "Build `survey_design` from the exact same final analysis dataset used for analysis.",

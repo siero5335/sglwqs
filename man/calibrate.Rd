@@ -47,7 +47,7 @@ A data frame with bin-level calibration summaries.
 Creates a calibration table by grouping predictions into quantile bins.
 }
 \details{
-For v1, survey-aware calibration is not implemented. Objects fitted with
+Survey-aware calibration is not currently implemented. Objects fitted with
 survey mode (\code{refit_engine = "svyglm"}) will error rather than
 returning ordinary unweighted calibration summaries.
 }

@@ -418,6 +418,102 @@ test_that("survey mode blocks unweighted metrics and calibration and checks row 
 })
 
 
+test_that("survey alignment guards analysis IDs and row-name fallback", {
+  testthat::skip_if_not_installed("survey")
+
+  dat <- make_simple_data(n = 120, seed = 91)
+  rownames(dat) <- paste0("id", seq_len(nrow(dat)))
+  design_df <- data.frame(
+    y = dat$y,
+    w = runif(nrow(dat), 0.5, 2),
+    row.names = rownames(dat)
+  )
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
+
+  fit <- suppressWarnings(sglwqs(
+    X = dat[, c("x1", "x2", "x3", "x4")],
+    y = dat$y,
+    refit = "full",
+    refit_engine = "svyglm",
+    survey_design = des,
+    nfolds = 3,
+    nlambda = 20,
+    seed = 91,
+    verbose = FALSE
+  ))
+  expect_equal(fit$analysis_id, rownames(dat))
+  expect_s3_class(fit$refit_info$refit_fit, "svyglm")
+
+  shifted_id <- c(rownames(dat)[-1], rownames(dat)[1])
+  shifted_design_df <- design_df
+  shifted_design_df$.analysis_id <- shifted_id
+  shifted_des <- survey::svydesign(ids = ~1, weights = ~w, data = shifted_design_df)
+  expect_error(
+    sglwqs(
+      X = dat[, c("x1", "x2", "x3", "x4")],
+      y = dat$y,
+      refit = "full",
+      refit_engine = "svyglm",
+      survey_design = shifted_des,
+      analysis_id = shifted_id,
+      nfolds = 3,
+      nlambda = 20,
+      seed = 92,
+      verbose = FALSE
+    ),
+    "`analysis_id` does not match the row names"
+  )
+
+  empty_id <- rownames(dat)
+  empty_id[1] <- ""
+  expect_error(
+    sglwqs(
+      X = dat[, c("x1", "x2", "x3", "x4")],
+      y = dat$y,
+      refit = "full",
+      refit_engine = "svyglm",
+      survey_design = des,
+      analysis_id = empty_id,
+      nfolds = 3,
+      nlambda = 20,
+      seed = 93,
+      verbose = FALSE
+    ),
+    "missing or empty"
+  )
+
+  data_api <- data.frame(
+    id = paste0("api", seq_len(nrow(dat))),
+    dat,
+    check.names = FALSE
+  )
+  rownames(data_api) <- NULL
+  data_api_design <- survey::svydesign(
+    ids = ~1,
+    weights = ~w,
+    data = data.frame(
+      .analysis_id = data_api$id,
+      w = design_df$w
+    )
+  )
+  fit_data_api <- suppressWarnings(sglwqs(
+    data = data_api,
+    exposure_vars = c("x1", "x2", "x3", "x4"),
+    outcome_var = "y",
+    refit = "full",
+    refit_engine = "svyglm",
+    survey_design = data_api_design,
+    analysis_id = 1,
+    nfolds = 3,
+    nlambda = 20,
+    seed = 94,
+    verbose = FALSE
+  ))
+  expect_equal(fit_data_api$analysis_id, data_api$id)
+  expect_s3_class(fit_data_api$refit_info$refit_fit, "svyglm")
+})
+
+
 test_that("svyglm refit with stratified clustered design produces design-based SEs", {
   testthat::skip_if_not_installed("survey")
 

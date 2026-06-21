@@ -249,7 +249,7 @@ to disable this behavior.
 
 ### Full Refit and Complex Survey
 
-To explicitly request a full-sample refit, use `refit = "full"`. `obs_weights` are used in the sparse-group selection loss, and `quantile_weights` are used for quantile cutpoints. `refit_engine = "glm"` performs a standard model-based full refit and does not automatically incorporate survey weights. For NHANES or other complex survey analyses, the intended route in v1 is `refit_engine = "svyglm"`, where the user passes a pre-created `survey_design` built from the exact final analysis dataset. In survey mode, sampling weights from `survey_design` are used for weighted quantile cutpoints and are mean-normalized for the sparse-group selection loss; the downstream refit then uses the original survey design through `survey::svyglm()`.
+To explicitly request a full-sample refit, use `refit = "full"`. `obs_weights` are used in the sparse-group selection loss, and `quantile_weights` are used for quantile cutpoints. `refit_engine = "glm"` performs a standard model-based full refit and does not automatically incorporate survey weights. For NHANES or other complex survey analyses, the current survey-aware route is `refit_engine = "svyglm"`, where the user passes a pre-created `survey_design` built from the exact final analysis dataset. In survey mode, sampling weights from `survey_design` are used for weighted quantile cutpoints and are mean-normalized for the sparse-group selection loss; the downstream refit then uses the original survey design through `survey::svyglm()`.
 
 ```r
 # Weighted selection + full-sample glm refit
@@ -275,7 +275,7 @@ fit_svy <- sglwqs(
 )
 ```
 
-In survey mode with `refit_engine = "svyglm"`, only Gaussian and binomial `refit = "full"` fits are supported in v1. The analysis rows must align exactly with `survey_design`; supplying `analysis_id` is recommended for reproducible NHANES workflows. Using `validation = TRUE`, `bootstrap = TRUE`, or `parallel = TRUE` (which would require survey-aware validation or resampling semantics) will raise explicit errors. Survey-aware predictive metrics and calibration summaries are not implemented in v1 and will error rather than returning ordinary unweighted summaries.
+In survey mode with `refit_engine = "svyglm"`, only Gaussian and binomial `refit = "full"` fits are currently supported. The analysis rows must align exactly with `survey_design`; supplying `analysis_id` is recommended for reproducible NHANES workflows. Using `validation = TRUE`, `bootstrap = TRUE`, or `parallel = TRUE` (which would require survey-aware validation or resampling semantics) will raise explicit errors. Survey-aware predictive metrics and calibration summaries are not currently implemented and will error rather than returning ordinary unweighted summaries.
 
 ### Categorical Covariates
 

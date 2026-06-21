@@ -372,9 +372,9 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
   }
 
   if (!is.null(analysis_id) && !is.null(data_frame) &&
-      is.character(analysis_id) && length(analysis_id) == 1L &&
-      analysis_id %in% data_names) {
-    analysis_id <- data_frame[[analysis_id]]
+      .is_single_data_var_selector(analysis_id, length(data_names))) {
+    analysis_id_var <- .resolve_single_data_var(analysis_id, data_names, "analysis_id")
+    analysis_id <- data_frame[[analysis_id_var]]
   }
 
   if (!is.null(X) && !is.null(data_frame) && .is_data_var_selector(X, length(data_names))) {
@@ -557,6 +557,9 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     .validate_survey_design(survey_design)
     alignment_df <- data.frame(.row = seq_len(n))
     rownames(alignment_df) <- rownames(X)
+    if (is.null(analysis_id) && !.has_automatic_rownames(alignment_df)) {
+      analysis_id <- rownames(alignment_df)
+    }
     .check_survey_alignment(
       survey_design = survey_design,
       glm_data = alignment_df,

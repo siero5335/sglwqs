@@ -305,7 +305,7 @@ cat("
    summary_bootstrap(fit)
    plot_selection_frequency(fit)
 
-3. VALID INFERENCE (Validation)
+3. DOWNSTREAM SUMMARIES (Validation)
    fit <- sglwqs(..., validation = TRUE, train_prop = 0.6)
    summary_validation(fit)
    plot_validation_results(fit)
