@@ -6,7 +6,8 @@ Authors@R:
 Description: Performs Weighted Quantile Sum (WQS) regression using Sparse Group 
     Lasso for variable selection and weight estimation. Features include:
     bootstrap aggregation for stable weight estimation with stratified resampling
-    for binary outcomes, train/validation split for inference with valid p-values, 
+    for binary outcomes, train/validation split for exploratory held-out
+    conditional association summaries,
     chemical group-based penalties with flexible grouping structures, automatic 
     dummy coding for categorical covariates, multiple imputation support via mice 
     package with Rubin's rules pooling, parallel processing support, and 

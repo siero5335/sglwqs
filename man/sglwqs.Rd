@@ -105,7 +105,8 @@ This option is only used when \code{parallel = TRUE}.}
 (default: TRUE). When TRUE and family = "binomial", bootstrap samples maintain the original
 case/control ratio, which improves convergence stability for imbalanced binary outcomes.}
 
-\item{validation}{Logical. Whether to split data for train/validation inference (default: FALSE).}
+\item{validation}{Logical. Whether to split data for exploratory
+train/validation summaries (default: FALSE).}
 
 \item{train_prop}{Numeric. Proportion of data for training (default: 0.6).}
 
@@ -175,7 +176,8 @@ downstream full-data GLM inference.
 \description{
 Fits a Weighted Quantile Sum (WQS) regression model using Sparse Group Lasso
 for simultaneous variable selection and weight estimation. Supports bootstrap
-aggregation for stable weights and train/validation split for inference.
+aggregation for stable weights and train/validation split for exploratory
+held-out conditional association summaries.
 }
 \details{
 \strong{Bootstrap Aggregation (bootstrap = TRUE):}
@@ -196,7 +198,12 @@ Requires the 'future.apply' package. Set up parallel backend before calling:
 \strong{Train/Validation Split (validation = TRUE):}
 Splits data into training and validation sets. Weights are estimated on the training
 set, then fixed weights are used to construct WQS indices for GLM on the validation set.
-This provides valid p-values for the mixture effect (avoiding post-selection inference issues).
+This provides exploratory validation-stage summaries conditional on
+training-estimated indices. The validation GLM treats the constructed
+indices as fixed and does not propagate uncertainty from regularized index
+estimation, lambda selection, bootstrap aggregation, or minor-direction
+filtering; p-values are therefore conditional summaries, not formal
+post-selection inference.
 
 \strong{Two-Stage Inference Paths:}
 \itemize{
@@ -268,7 +275,7 @@ fit2 <- sglwqs(
 )
 plan(sequential)
 
-# With validation for p-values
+# With validation for exploratory conditional summaries
 fit3 <- sglwqs(
   X = wqs_data[, c(PCBs, phthalates)],
   y = wqs_data$y,

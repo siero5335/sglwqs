@@ -227,9 +227,9 @@ print.sglwqs_bootstrap_summary <- function(x, ...) {
 
 #' Summary of Validation Results
 #'
-#' Summarizes validation inference results including estimates, standard errors,
-#' confidence intervals, and p-values. When groups are specified, provides
-#' group-specific inference.
+#' Summarizes downstream validation or refit results including estimates,
+#' standard errors, confidence intervals, and conditional p-values. When groups
+#' are specified, provides group-specific summaries.
 #'
 #' @param object A \code{sglwqs} object with downstream inference enabled via
 #'   \code{validation = TRUE} or \code{refit = "full"}.

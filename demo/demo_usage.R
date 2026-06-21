@@ -5,7 +5,7 @@
 # - Basic model fitting
 # - Chemical group-based Group Lasso
 # - Bootstrap aggregation for stable weights
-# - Train/Validation split for inference
+# - Train/Validation split for exploratory conditional summaries
 # - Parallel processing for bootstrap
 # - Inference summary functions
 # - Visualization functions for bootstrap/validation results
@@ -158,7 +158,7 @@ summary(fit_full)
 # The summary now shows:
 # - Coefficient table like GLM output
 # - Group-specific effects (PCBs positive/negative, Phthalates positive/negative)
-# - Standard errors, z/t values, and p-values
+# - Standard errors, z/t values, and conditional p-values
 # - Significance codes
 
 # --- Group-wise Validation Results ---
@@ -166,10 +166,10 @@ cat("\n--- Group-wise Validation Results ---\n")
 val_summary <- summary_validation(fit_full)
 print(val_summary)
 
-# This shows inference results separately for each chemical group:
+# This shows exploratory conditional summaries separately for each chemical group:
 # - PCBs (positive) / PCBs (negative)
 # - Phthalates (positive) / Phthalates (negative)
-# - Each with estimate, SE, CI, and p-value
+# - Each with estimate, SE, CI, and conditional p-value
 
 # --- Bootstrap Summary ---
 cat("\n--- Bootstrap Summary ---\n")
@@ -272,7 +272,7 @@ print(head(weights_df, 10))
 cat("\n--- Group-wise Summary ---\n")
 summary_by_group(fit_full)
 
-# 6.3 Validation p-values for abstract/results section
+# 6.3 Validation-stage conditional summaries
 cat("\n--- Key Statistics for Reporting ---\n")
 cat("Positive mixture effect:\n")
 cat(sprintf("  beta = %.3f (95%% CI: %.3f to %.3f), p = %s\n",
@@ -429,7 +429,7 @@ if (requireNamespace("mice", quietly = TRUE)) {
   summary(fit)
   plot_pooled_weights(fit)
   
-  # Rubin's rules p-values
+  # Rubin-pooled conditional downstream summaries
   fit$pooled$validation$wqs_pos$p_value
   fit$pooled$validation$wqs_neg$p_value
 ")
@@ -465,7 +465,7 @@ cat("
    plot_pooled_weights(fit)          # Visualization
 
 4. REPORT KEY STATISTICS
-   # Pooled p-values (Rubin's rules)
+   # Rubin-pooled conditional downstream summaries
    fit$pooled$validation$wqs_pos$p_value
    fit$pooled$validation$wqs_neg$p_value
    

@@ -11,7 +11,7 @@
 - **Bidirectional Weights**: Separately estimates positive and negative effects
 - **Grouping**: Applies penalties by variable groups (e.g., PCBs, Phthalates)
 - **Bootstrap**: Bootstrap aggregation for weight stabilization
-- **Train/Validation Split**: Data splitting for valid p-values
+- **Train/Validation Split**: Data splitting for exploratory held-out conditional association summaries
 - **Multiple Imputation (mice)**: Handles missing data with pooling via Rubin's rules
 - **Categorical Covariates**: Automatic dummy coding for factor variables
 - **Rich Visualization**: Multiple plot types for visualizing weights
@@ -72,7 +72,7 @@ The main configuration choice is therefore not just "which model", but also
 | Quick prototype / point estimates only | `bootstrap = FALSE`, `refit = "none"` | Weights and sparse coefficients only |
 | Weight stability without downstream GLM | `bootstrap = TRUE`, `refit = "none"` | Bootstrap summaries for exposures, covariates, and WQS index sums |
 | Full-data downstream GLM (small `n`) | `refit = "full"` | In-sample downstream GLM inference |
-| Held-out downstream GLM | `validation = TRUE` | Validation-split downstream GLM inference |
+| Held-out downstream GLM | `validation = TRUE` | Exploratory validation-split downstream GLM summaries conditional on fixed training-estimated indices |
 | Missing data + downstream GLM | `sglwqs_mice(...)` with `refit = "full"` or `validation = TRUE` | Rubin-pooled downstream inference |
 | Missing data + bootstrap-only summaries | `sglwqs_mice(...)` with `bootstrap = TRUE`, `refit = "none"` | Rubin-pooled bootstrap summaries |
 
@@ -194,9 +194,12 @@ summary_inference(fit_boot)
 plot_inference_results(fit_boot)
 ```
 
-### Train/Validation Split (Inference)
+### Train/Validation Split (Exploratory Conditional Summaries)
 
-Split data to avoid post-selection inference issues and obtain valid p-values:
+Split data to separate training-stage index construction from exploratory
+held-out validation summaries. The resulting p-values are conditional on the
+fixed training-estimated indices and should not be interpreted as formal
+post-selection or confirmatory inference:
 
 ```r
 fit_val <- sglwqs(
@@ -209,11 +212,11 @@ fit_val <- sglwqs(
   seed = 123
 )
 
-# Check p-values (refer to group_results when groups are specified)
+# Check conditional validation-stage p-values (refer to group_results when groups are specified)
 summary_validation(fit_val)
 summary_inference(fit_val)
 
-# Example: p-values for PCBs
+# Example: conditional validation-stage p-values for PCBs
 fit_val$validation_info$group_results$PCBs$pos_pvalue
 fit_val$validation_info$group_results$PCBs$neg_pvalue
 ```
@@ -246,7 +249,7 @@ to disable this behavior.
 
 ### Full Refit and Complex Survey
 
-To explicitly request a full-sample refit, use `refit = "full"`. `obs_weights` are used in the sparse-group selection loss, and `quantile_weights` are used for quantile cutpoints. `refit_engine = "glm"` performs a standard model-based full refit and does not automatically incorporate survey weights. The intended inference route for NHANES in v1 is `refit_engine = "svyglm"`, where the user passes a pre-created `survey_design`.
+To explicitly request a full-sample refit, use `refit = "full"`. `obs_weights` are used in the sparse-group selection loss, and `quantile_weights` are used for quantile cutpoints. `refit_engine = "glm"` performs a standard model-based full refit and does not automatically incorporate survey weights. For NHANES or other complex survey analyses, the intended route in v1 is `refit_engine = "svyglm"`, where the user passes a pre-created `survey_design` built from the exact final analysis dataset.
 
 ```r
 # Weighted selection + full-sample glm refit
@@ -399,7 +402,7 @@ fit_mi <- sglwqs_mice(
 # View results
 summary(fit_mi)
 
-# Pooled p-values via Rubin's rules
+# Rubin-pooled conditional downstream summaries
 fit_mi$pooled$validation$wqs_pos$p_value
 fit_mi$pooled$validation$wqs_neg$p_value
 
@@ -436,7 +439,7 @@ plot_combined_results(fit_mi)
 | Function | Description |
 |----------|-------------|
 | `summary_bootstrap()` | Bootstrap summary (selection frequency, CI) |
-| `summary_validation()` | Validation summary (p-values, estimates) |
+| `summary_validation()` | Exploratory validation summary (conditional p-values, estimates) |
 | `get_inference_table()` | Comprehensive inference table for publications |
 
 ### Multiple Imputation Functions
@@ -483,8 +486,8 @@ The return value of `sglwqs()` includes:
   - `selection_freq_pos`, `selection_freq_neg`: Selection frequencies
   - `se_pos_coef`, `se_neg_coef`: Standard errors of coefficients
 - `validation_info`: Validation information (when validation=TRUE)
-  - `group_results`: Estimates, SE, and p-values by group (when groups are specified)
-  - `wqs_pos_pvalue`, `wqs_neg_pvalue`: Overall WQS p-values (when groups are not specified)
+  - `group_results`: Estimates, SE, and conditional p-values by group (when groups are specified)
+  - `wqs_pos_pvalue`, `wqs_neg_pvalue`: Overall conditional WQS p-values (when groups are not specified)
   - `wqs_pos_estimate`, `wqs_neg_estimate`: Overall WQS estimates (when groups are not specified)
 
 ## Interpretation of Weights and Indices

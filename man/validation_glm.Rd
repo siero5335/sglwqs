@@ -38,6 +38,8 @@ validation_glm(
 A list with validation GLM results.
 }
 \description{
-Performs validation step to obtain p-values using fixed weights.
+Performs the validation-stage GLM using fixed training-estimated weights.
+Returned p-values are exploratory conditional summaries and do not propagate
+uncertainty from index estimation or selection.
 }
 \keyword{internal}

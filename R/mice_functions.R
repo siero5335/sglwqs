@@ -67,7 +67,9 @@
 #'
 #' @details
 #' This function fits sglwqs to each imputed dataset and then pools the results
-#' using Rubin's rules for valid inference with multiply imputed data.
+#' using Rubin's rules for downstream GLM summaries with multiply imputed data.
+#' When validation-based summaries are pooled, their p-values remain
+#' conditional on the training-estimated indices within each imputation.
 #'
 #' \strong{Pooling Strategy:}
 #' \itemize{

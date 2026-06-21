@@ -985,7 +985,9 @@ refit_model <- function(X_quantile, y, cov_matrix,
 
 #' Internal Function: Validation Step for Inference
 #'
-#' Performs validation step to obtain p-values using fixed weights.
+#' Performs the validation-stage GLM using fixed training-estimated weights.
+#' Returned p-values are exploratory conditional summaries and do not propagate
+#' uncertainty from index estimation or selection.
 #'
 #' @param X_quantile_val Quantile-transformed validation exposure matrix.
 #' @param y_val Validation outcome vector.

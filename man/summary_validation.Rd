@@ -16,9 +16,9 @@ summary_validation(object, conf_level = 0.95)
 A data frame with downstream inference summary statistics.
 }
 \description{
-Summarizes validation inference results including estimates, standard errors,
-confidence intervals, and p-values. When groups are specified, provides
-group-specific inference.
+Summarizes downstream validation or refit results including estimates,
+standard errors, confidence intervals, and conditional p-values. When groups
+are specified, provides group-specific summaries.
 }
 \examples{
 \donttest{
