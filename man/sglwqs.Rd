@@ -18,6 +18,10 @@ sglwqs(
   group_structure = "direction",
   bootstrap = FALSE,
   n_boot = 100,
+  boot_method = c("auto", "naive", "svrep"),
+  svrep_type = c("auto", "JK1", "JKn", "BRR", "Fay", "bootstrap", "subbootstrap",
+    "mrbbootstrap"),
+  svrep_args = list(),
   parallel = FALSE,
   keep_boot_matrices = FALSE,
   checkpoint_dir = NULL,
@@ -77,6 +81,19 @@ effects within each chemical group separately.}
 \item{bootstrap}{Logical. Whether to use bootstrap aggregation for stable weights (default: FALSE).}
 
 \item{n_boot}{Integer. Number of bootstrap iterations (default: 100).}
+
+\item{boot_method}{Character. Bootstrap weighting method. \code{"auto"}
+uses ordinary row bootstrap without \code{survey_design} and survey
+replicate weights with \code{survey_design}; \code{"naive"} uses ordinary
+row bootstrap, and \code{"svrep"} uses replicate weights from
+\code{survey_design}.}
+
+\item{svrep_type}{Character. Replicate design type passed to
+\code{survey::as.svrepdesign()} when \code{boot_method = "svrep"} and
+\code{survey_design} is not already a replicate design.}
+
+\item{svrep_args}{Optional list of additional arguments passed to
+\code{survey::as.svrepdesign()}.}
 
 \item{parallel}{Logical. Whether to use parallel processing for bootstrap (default: FALSE).
 Requires the 'future.apply' package. Set up parallel backend with future::plan() before calling.}

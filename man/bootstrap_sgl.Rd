@@ -26,6 +26,11 @@ bootstrap_sgl(
   cleanup_checkpoint = TRUE,
   stratified = TRUE,
   obs_weights = NULL,
+  boot_method = c("auto", "naive", "svrep"),
+  survey_design = NULL,
+  svrep_type = c("auto", "JK1", "JKn", "BRR", "Fay", "bootstrap", "subbootstrap",
+    "mrbbootstrap"),
+  svrep_args = list(),
   ...
 )
 }

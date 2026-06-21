@@ -14,7 +14,10 @@ validation_glm(
   groups,
   group_inference = TRUE,
   obs_weights = NULL,
-  excluded_directions = list()
+  excluded_directions = list(),
+  engine = c("glm", "svyglm"),
+  survey_design = NULL,
+  analysis_id = NULL
 )
 }
 \arguments{

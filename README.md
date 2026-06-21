@@ -275,7 +275,17 @@ fit_svy <- sglwqs(
 )
 ```
 
-In survey mode with `refit_engine = "svyglm"`, only Gaussian and binomial `refit = "full"` fits are currently supported. The analysis rows must align exactly with `survey_design`; supplying `analysis_id` is recommended for reproducible NHANES workflows. Using `validation = TRUE`, `bootstrap = TRUE`, or `parallel = TRUE` (which would require survey-aware validation or resampling semantics) will raise explicit errors. Survey-aware predictive metrics and calibration summaries are not currently implemented and will error rather than returning ordinary unweighted summaries.
+In survey mode with `refit_engine = "svyglm"`, Gaussian and binomial full-data
+or validation-stage refits are supported. The analysis rows must align exactly
+with `survey_design`; supplying `analysis_id` is recommended for reproducible
+NHANES workflows. When `bootstrap = TRUE`, `boot_method = "auto"` uses survey
+replicate weights (`boot_method = "svrep"`), normalizes each replicate-weight
+column for sparse-group selection, and computes bootstrap standard errors with
+the survey design's `scale` and `rscales`. If ordinary row resampling is intended,
+set `boot_method = "naive"` explicitly; this warns because it ignores survey
+cluster/strata structure. Survey-aware predictive metrics and calibration
+summaries are not currently implemented and will error rather than returning
+ordinary unweighted summaries.
 
 ### Categorical Covariates
 

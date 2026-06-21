@@ -82,9 +82,18 @@ test_that("obs_weights are accepted by selection and full glm refit works", {
 })
 
 
-test_that("survey mode rejects unsupported combinations", {
+test_that("survey mode validates refit-engine inputs", {
+  testthat::skip_if_not_installed("survey")
+
   dat <- make_simple_data(n = 120, seed = 30)
-  dummy_design <- list(variables = data.frame(id = seq_len(nrow(dat))))
+  rownames(dat) <- paste0("id", seq_len(nrow(dat)))
+  design_df <- data.frame(
+    y = dat$y,
+    w = runif(nrow(dat), 0.5, 2),
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
+  )
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
   
   expect_error(
     sglwqs(
@@ -103,45 +112,28 @@ test_that("survey mode rejects unsupported combinations", {
     sglwqs(
       X = dat[, c("x1", "x2", "x3", "x4")],
       y = dat$y,
-      refit = "validation",
-      refit_engine = "svyglm",
-      survey_design = dummy_design,
+      refit = "full",
+      refit_engine = "glm",
+      survey_design = des,
+      analysis_id = rownames(dat),
       nfolds = 3,
       nlambda = 20,
       verbose = FALSE
     ),
-    "Survey refit"
+    "requires `refit_engine = \"svyglm\"`"
   )
-  
+
   expect_error(
     sglwqs(
       X = dat[, c("x1", "x2", "x3", "x4")],
       y = dat$y,
       refit = "full",
-      refit_engine = "svyglm",
-      survey_design = dummy_design,
-      bootstrap = TRUE,
-      n_boot = 5,
+      validation = TRUE,
       nfolds = 3,
       nlambda = 20,
       verbose = FALSE
     ),
-    "Survey refit"
-  )
-  
-  expect_error(
-    sglwqs(
-      X = dat[, c("x1", "x2", "x3", "x4")],
-      y = dat$y,
-      refit = "full",
-      refit_engine = "svyglm",
-      survey_design = dummy_design,
-      parallel = TRUE,
-      nfolds = 3,
-      nlambda = 20,
-      verbose = FALSE
-    ),
-    "Survey refit"
+    "validation = TRUE"
   )
 })
 
@@ -208,6 +200,143 @@ test_that("full svyglm refit works when survey is available", {
     covariates = cov_df[1:10, , drop = FALSE]
   ))
   expect_no_error(capture.output(summary(fit)))
+})
+
+
+test_that("survey bootstrap preparation selects and scales replicate weights", {
+  testthat::skip_if_not_installed("survey")
+
+  dat <- data.frame(
+    y = rnorm(24),
+    w = runif(24, 0.5, 2)
+  )
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = dat)
+
+  naive <- sglwqs:::.prepare_boot_weights(
+    n = nrow(dat),
+    n_boot = 4,
+    boot_method = "auto",
+    survey_design = NULL,
+    family = "gaussian",
+    y = dat$y,
+    seed = 11
+  )
+  expect_equal(naive$method_used, "naive")
+  expect_equal(dim(naive$index_matrix), c(nrow(dat), 4))
+
+  svrep <- sglwqs:::.prepare_boot_weights(
+    n = nrow(dat),
+    n_boot = 3,
+    boot_method = "auto",
+    survey_design = des,
+    svrep_type = "bootstrap",
+    family = "gaussian",
+    y = dat$y,
+    seed = 12
+  )
+  expect_equal(svrep$method_used, "svrep")
+  expect_equal(svrep$svrep_type_used, "bootstrap")
+  expect_equal(dim(svrep$weight_matrix), c(nrow(dat), 3))
+  expect_equal(as.numeric(colMeans(svrep$weight_matrix)), rep(1, 3), tolerance = 1e-8)
+  expect_true(is.finite(svrep$variance_scale))
+  expect_length(svrep$variance_rscales, 3)
+})
+
+
+test_that("survey replicate bootstrap uses full-sample center and survey variance", {
+  testthat::skip_if_not_installed("survey")
+
+  n <- 20
+  X_quantile <- matrix(runif(n * 2), ncol = 2)
+  colnames(X_quantile) <- c("x1", "x2")
+  dat <- data.frame(y = rnorm(n), w = runif(n, 0.5, 2))
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = dat)
+  fit_calls <- 0L
+
+  res <- testthat::with_mocked_bindings(
+    sglwqs:::bootstrap_sgl(
+      X_quantile = X_quantile,
+      y = dat$y,
+      cov_matrix = NULL,
+      var_names = colnames(X_quantile),
+      cov_names = NULL,
+      groups = NULL,
+      group_by_compound = FALSE,
+      group_structure = "direction",
+      penalize_covariates = FALSE,
+      family = "gaussian",
+      lambda = "lambda.min",
+      nfolds = 2,
+      n_boot = 2,
+      seed = 13,
+      verbose = FALSE,
+      boot_method = "svrep",
+      survey_design = des,
+      svrep_type = "bootstrap",
+      obs_weights = rep(1, n)
+    ),
+    fit_sgl_core = function(...) {
+      fit_calls <<- fit_calls + 1L
+      pos <- if (fit_calls <= 2L) {
+        c(x1 = 10 + fit_calls, x2 = 0)
+      } else {
+        c(x1 = 1, x2 = 0)
+      }
+      list(
+        pos_coef = pos,
+        neg_coef = c(x1 = 0, x2 = 0),
+        cov_coef = NULL
+      )
+    },
+    .package = "sglwqs"
+  )
+
+  expect_equal(res$method, "svrep")
+  expect_equal(res$n_successful, 2)
+  expect_equal(res$n_boot_actual, 2)
+  expect_true(isTRUE(res$weights_normalized))
+  expect_equal(as.numeric(res$mean_pos_coef["x1"]), 1)
+  expect_equal(as.numeric(res$svrep_center_pos_coef["x1"]), 1)
+  expect_true(is.finite(res$se_pos_coef["x1"]))
+  expect_equal(res$bootstrap_design, "survey_replicate_weights")
+})
+
+
+test_that("validation_glm can use svyglm on a validation survey subset", {
+  testthat::skip_if_not_installed("survey")
+
+  n <- 30
+  ids <- paste0("v", seq_len(n))
+  X_quantile <- matrix(runif(n * 2), ncol = 2, dimnames = list(ids, c("x1", "x2")))
+  y <- rnorm(n)
+  des <- survey::svydesign(
+    ids = ~1,
+    weights = ~w,
+    data = data.frame(
+      y = y,
+      w = runif(n, 0.5, 2),
+      .analysis_id = ids,
+      row.names = ids
+    )
+  )
+
+  val <- sglwqs:::validation_glm(
+    X_quantile_val = X_quantile,
+    y_val = y,
+    cov_matrix_val = NULL,
+    pos_weights = c(x1 = 0.7, x2 = 0.3),
+    neg_weights = c(x1 = 0, x2 = 0),
+    family = "gaussian",
+    groups = NULL,
+    group_inference = FALSE,
+    engine = "svyglm",
+    survey_design = des,
+    analysis_id = ids
+  )
+
+  expect_equal(val$engine, "svyglm")
+  expect_s3_class(val$refit_fit, "svyglm")
+  expect_equal(val$n_val, n)
 })
 
 

@@ -25,12 +25,19 @@
   imputation fits also retain imputation-level error messages.
 * Added `vcov.sglwqs()` for downstream refit and bootstrap-only covariance
   extraction.
-* Minimal complex-survey support for Gaussian and binomial full-data refits now
+* Complex-survey support for Gaussian and binomial refits now
   uses `survey_design` sampling weights for quantile cutpoints, mean-normalized
   design weights for sparse-group selection, and the original survey design for
   downstream `survey::svyglm()` inference. Survey mode validates row alignment
-  via `analysis_id` or stable row names and continues to reject validation,
-  bootstrap, and parallel survey workflows.
+  via `analysis_id` or stable row names and supports full-data and
+  validation-stage refits.
+* Survey-aware bootstrap now supports `boot_method = "svrep"` for replicate
+  weight resampling. With `survey_design`, `boot_method = "auto"` chooses
+  survey replicate weights, normalizes each replicate column for sparse-group
+  selection, and computes bootstrap standard errors with the survey design's
+  `scale` and `rscales`. `boot_method = "naive"` remains available as an
+  explicit row-resampling fallback and warns when it ignores survey
+  cluster/strata structure.
 * Revision follow-up: validation-demo wording now avoids the phrase "valid
   inference", and survey-mode alignment checks now reject empty analysis IDs,
   compare stable analysis row names against `analysis_id`, and carry stable

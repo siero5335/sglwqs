@@ -25,6 +25,16 @@
 #'   effects within each chemical group separately.
 #' @param bootstrap Logical. Whether to use bootstrap aggregation for stable weights (default: FALSE).
 #' @param n_boot Integer. Number of bootstrap iterations (default: 100).
+#' @param boot_method Character. Bootstrap weighting method. \code{"auto"}
+#'   uses ordinary row bootstrap without \code{survey_design} and survey
+#'   replicate weights with \code{survey_design}; \code{"naive"} uses ordinary
+#'   row bootstrap, and \code{"svrep"} uses replicate weights from
+#'   \code{survey_design}.
+#' @param svrep_type Character. Replicate design type passed to
+#'   \code{survey::as.svrepdesign()} when \code{boot_method = "svrep"} and
+#'   \code{survey_design} is not already a replicate design.
+#' @param svrep_args Optional list of additional arguments passed to
+#'   \code{survey::as.svrepdesign()}.
 #' @param parallel Logical. Whether to use parallel processing for bootstrap (default: FALSE).
 #'   Requires the 'future.apply' package. Set up parallel backend with future::plan() before calling.
 #' @param keep_boot_matrices Logical. Whether to keep full bootstrap coefficient matrices
@@ -220,6 +230,10 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
                    group_structure = "direction",
                    bootstrap = FALSE,
                    n_boot = 100,
+                   boot_method = c("auto", "naive", "svrep"),
+                   svrep_type = c("auto", "JK1", "JKn", "BRR", "Fay",
+                                  "bootstrap", "subbootstrap", "mrbbootstrap"),
+                   svrep_args = list(),
                    parallel = FALSE,
                    keep_boot_matrices = FALSE,
                    checkpoint_dir = NULL,
@@ -251,46 +265,49 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
   quantile_weights_supplied <- !missing(quantile_weights) && !is.null(quantile_weights)
   family <- match.arg(family)
   refit <- if (refit_missing) "none" else match.arg(refit)
+  refit_requested <- refit
+  if (validation && !refit_missing && !identical(refit_requested, "validation")) {
+    stop(
+      "`validation = TRUE` is only compatible with `refit = \"validation\"`.",
+      call. = FALSE
+    )
+  }
+  if (validation) {
+    refit <- "validation"
+  } else if (identical(refit, "validation")) {
+    validation <- TRUE
+  }
+  boot_method <- match.arg(boot_method)
+  svrep_type <- match.arg(svrep_type)
   refit_engine <- if (refit_engine_missing) {
-    if (!is.null(survey_design)) "svyglm" else "glm"
+    if (!is.null(survey_design) && !identical(refit, "none")) "svyglm" else "glm"
   } else {
     match.arg(refit_engine)
   }
-  requested_survey_mode <- identical(refit_engine, "svyglm") || !is.null(survey_design)
+  survey_mode <- !is.null(survey_design)
+  survey_refit_mode <- identical(refit_engine, "svyglm")
   
   if (!is.numeric(minor_threshold) || length(minor_threshold) != 1 ||
       !is.finite(minor_threshold) || minor_threshold < 0 || minor_threshold > 1) {
     stop("`minor_threshold` must be a single numeric value between 0 and 1.", call. = FALSE)
   }
 
-  if (validation && !refit_missing && !identical(refit, "validation")) {
+  if (survey_mode && !identical(refit, "none") && !survey_refit_mode) {
     stop(
-      "`validation = TRUE` is only compatible with `refit = \"validation\"`.",
+      "`survey_design` with downstream refit requires `refit_engine = \"svyglm\"`.",
       call. = FALSE
     )
   }
-  if ((validation || identical(refit, "validation")) && requested_survey_mode) {
+  if (survey_refit_mode && is.null(survey_design)) {
+    stop("`survey_design` must be provided when `refit_engine = \"svyglm\"`.", call. = FALSE)
+  }
+  if (survey_refit_mode && !identical(refit, "full") && !identical(refit, "validation")) {
     stop(
-      "Survey refit is currently supported only for `refit = \"full\"` without bootstrap or validation split.",
+      "Survey refit is supported only for `refit = \"full\"` or `validation = TRUE`.",
       call. = FALSE
     )
   }
-  if (validation) {
-    refit <- "validation"
-    refit_engine <- "glm"
-  } else if (identical(refit, "validation")) {
-    validation <- TRUE
-  }
-  
-  if (!is.null(survey_design) && !identical(refit_engine, "svyglm")) {
-    stop(
-      "`survey_design` can only be used with `refit_engine = \"svyglm\"`.",
-      call. = FALSE
-    )
-  }
-  
-  survey_mode <- identical(refit_engine, "svyglm") || !is.null(survey_design)
-  if (survey_mode) {
+  if (survey_mode || survey_refit_mode) {
     if (!family %in% c("gaussian", "binomial")) {
       stop(
         "Survey refit is currently supported only for `family = \"gaussian\"` ",
@@ -298,21 +315,28 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
         call. = FALSE
       )
     }
-    if (!identical(refit, "full")) {
-      stop(
-        "Survey refit is currently supported only for `refit = \"full\"` without bootstrap or validation split.",
-        call. = FALSE
-      )
-    }
-    if (bootstrap || validation || parallel) {
-      stop(
-        "Survey refit is currently supported only for `refit = \"full\"` without bootstrap or validation split.",
-        call. = FALSE
-      )
-    }
-    if (is.null(survey_design)) {
-      stop("`survey_design` must be provided when `refit_engine = \"svyglm\"`.", call. = FALSE)
-    }
+  }
+  if (identical(boot_method, "auto")) {
+    boot_method <- if (!is.null(survey_design)) "svrep" else "naive"
+  }
+  if (identical(boot_method, "svrep") && is.null(survey_design)) {
+    stop("`boot_method = \"svrep\"` requires `survey_design`.", call. = FALSE)
+  }
+  if (identical(boot_method, "naive") && !is.null(survey_design)) {
+    warning(
+      "`boot_method = \"naive\"` with `survey_design` ignores survey ",
+      "cluster/strata structure; only design weights are reflected. Use ",
+      "`boot_method = \"svrep\"` for replicate-weight survey bootstrap.",
+      call. = FALSE
+    )
+  }
+  if (identical(boot_method, "svrep") && identical(family, "binomial") &&
+      isTRUE(stratified_bootstrap)) {
+    message(
+      "Outcome stratification (`stratified_bootstrap = TRUE`) is ignored when ",
+      "`boot_method = \"svrep\"`; survey replicate weights define the resampling."
+    )
+    stratified_bootstrap <- FALSE
   }
 
   .advise_on_settings(
@@ -629,6 +653,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     } else {
       train_idx <- sample(n, floor(n * train_prop))
     }
+    train_idx <- sort(train_idx)
     val_idx <- setdiff(seq_len(n), train_idx)
     
     # Quantile transform: learn breaks on train data, apply to val data (prevent leakage)
@@ -644,23 +669,37 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       weights = quantile_weights_train
     )
     X_train <- train_qt_result$q
+    if (!is.null(rownames(X_train_raw))) {
+      rownames(X_train) <- rownames(X_train_raw)
+    }
     train_breaks <- train_qt_result$breaks
     
     # Validation: apply breaks learned on train data
     val_qt_result <- quantile_transform(X_val_raw, n_quantiles = n_quantiles, 
                                          var_names = var_names, breaks_list = train_breaks)
     X_val <- val_qt_result$q
+    if (!is.null(rownames(X_val_raw))) {
+      rownames(X_val) <- rownames(X_val_raw)
+    }
     
     y_train <- y[train_idx]
     y_val <- y[val_idx]
     cov_train <- if (!is.null(cov_matrix)) cov_matrix[train_idx, , drop = FALSE] else NULL
     cov_val <- if (!is.null(cov_matrix)) cov_matrix[val_idx, , drop = FALSE] else NULL
     obs_weights_val <- if (!is.null(obs_weights)) obs_weights[val_idx] else NULL
+    train_survey_design <- if (survey_mode) {
+      .subset_survey_design(survey_design, train_idx, context = "training")
+    } else {
+      NULL
+    }
     
     # Quantile transform all data (for output) - apply train breaks to full data
     full_qt_result <- quantile_transform(X, n_quantiles = n_quantiles, 
                                           var_names = var_names, breaks_list = train_breaks)
     X_quantile <- full_qt_result$q
+    if (!is.null(rownames(X))) {
+      rownames(X_quantile) <- rownames(X)
+    }
     quantile_breaks <- train_breaks
     
   } else {
@@ -672,12 +711,16 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       weights = quantile_weights
     )
     X_quantile <- qt_result$q
+    if (!is.null(rownames(X))) {
+      rownames(X_quantile) <- rownames(X)
+    }
     quantile_breaks <- qt_result$breaks
     
     X_train <- X_quantile
     y_train <- y
     cov_train <- cov_matrix
     obs_weights_train <- obs_weights
+    train_survey_design <- survey_design
     
     X_val <- NULL
     y_val <- NULL
@@ -709,6 +752,10 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       cleanup_checkpoint = cleanup_checkpoint,
       stratified = stratified_bootstrap,
       obs_weights = obs_weights_train,
+      boot_method = boot_method,
+      survey_design = train_survey_design,
+      svrep_type = svrep_type,
+      svrep_args = svrep_args,
       ...
     )
     
@@ -738,7 +785,26 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       boot_error_msg = boot_result$boot_error_msg,
       parallel_batch_errors = boot_result$parallel_batch_errors,
       n_parallel_batch_failures = boot_result$n_parallel_batch_failures,
-      n_successful = boot_result$n_successful
+      n_successful = boot_result$n_successful,
+      n_failed = boot_result$n_failed,
+      method = boot_result$method,
+      svrep_type_used = boot_result$svrep_type_used,
+      svrep_args = boot_result$svrep_args,
+      bootstrap_design = boot_result$bootstrap_design,
+      survey_design_ignored = boot_result$survey_design_ignored,
+      variance_scale = boot_result$variance_scale,
+      variance_rscales = boot_result$variance_rscales,
+      variance_df = boot_result$variance_df,
+      svrep_center_pos_coef = boot_result$svrep_center_pos_coef,
+      svrep_center_neg_coef = boot_result$svrep_center_neg_coef,
+      svrep_center_cov_coef = boot_result$svrep_center_cov_coef,
+      svrep_center_index_sum_pos = boot_result$svrep_center_index_sum_pos,
+      svrep_center_index_sum_neg = boot_result$svrep_center_index_sum_neg,
+      svrep_center_index_sum_by_group_pos = boot_result$svrep_center_index_sum_by_group_pos,
+      svrep_center_index_sum_by_group_neg = boot_result$svrep_center_index_sum_by_group_neg,
+      weights_normalized = boot_result$weights_normalized,
+      n_boot_actual = boot_result$n_boot_actual,
+      n_boot_requested = boot_result$n_boot_requested
     )
 
     # Memory-saving option: do not store matrices when keep_boot_matrices=FALSE
@@ -812,7 +878,8 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
 
   # In bootstrap mode, overwrite with "mean of per-draw weights" (manuscript estimator)
 
-  if (bootstrap && !is.null(boot_result$boot_pos_coef)) {
+  if (bootstrap && !identical(boot_result$method, "svrep") &&
+      !is.null(boot_result$boot_pos_coef)) {
     agg_weights <- .aggregate_bootstrap_weights(
       boot_pos_coef = boot_result$boot_pos_coef,
       boot_neg_coef = boot_result$boot_neg_coef,
@@ -864,6 +931,11 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
   validation_info <- NULL
   
   if (identical(refit, "validation")) {
+    validation_survey_design <- if (survey_mode) {
+      .subset_survey_design(survey_design, val_idx, context = "validation")
+    } else {
+      NULL
+    }
     val_result <- validation_glm(
       X_quantile_val = X_val,
       y_val = y_val,
@@ -874,7 +946,10 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       groups = groups,
       group_inference = !is.null(groups),
       obs_weights = obs_weights_val,
-      excluded_directions = excluded_directions
+      excluded_directions = excluded_directions,
+      engine = refit_engine,
+      survey_design = validation_survey_design,
+      analysis_id = if (!is.null(analysis_id)) analysis_id[val_idx] else NULL
     )
     
     refit_info <- list(
@@ -892,7 +967,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       group_inference = val_result$group_inference,
       wqs_indices = val_result$wqs_indices,
       formula = val_result$formula,
-      engine = "glm",
+      engine = val_result$engine,
       curve = val_result$curve,
       n_train = length(train_idx),
       n_val = length(val_idx),
@@ -969,6 +1044,9 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     refit_engine = refit_engine,
     survey_mode = survey_mode,
     survey_info = survey_info,
+    boot_method = boot_method,
+    svrep_type = svrep_type,
+    svrep_args = svrep_args,
     
     # Data info
     X_quantile = X_quantile,
