@@ -45,9 +45,15 @@ summary_bootstrap <- function(object, conf_level = 0.95, min_freq = 0) {
   boot_info <- object$boot_info
   alpha <- 1 - conf_level
   z_val <- qnorm(1 - alpha / 2)
+  ci_multiplier <- if (identical(boot_info$method, "svrep")) {
+    .svrep_ci_multiplier(boot_info, conf_level = conf_level)
+  } else {
+    z_val
+  }
   
   # Check if bootstrap matrices are stored
-  has_boot_matrices <- !is.null(boot_info$boot_pos_coef) && !is.null(boot_info$boot_neg_coef)
+  has_boot_matrices <- !identical(boot_info$method, "svrep") &&
+    !is.null(boot_info$boot_pos_coef) && !is.null(boot_info$boot_neg_coef)
   
   if (has_boot_matrices) {
     # Compute statistics from bootstrap distribution
@@ -100,10 +106,12 @@ summary_bootstrap <- function(object, conf_level = 0.95, min_freq = 0) {
       variable = object$var_names,
       direction = "positive",
       weight = as.numeric(object$pos_weights),
-      mean_coef = as.numeric(object$pos_coef),
+      mean_coef = as.numeric(boot_info$mean_pos_coef %||% object$pos_coef),
       se_coef = boot_info$se_pos_coef,
-      ci_lower = as.numeric(object$pos_coef) - z_val * boot_info$se_pos_coef,
-      ci_upper = as.numeric(object$pos_coef) + z_val * boot_info$se_pos_coef,
+      ci_lower = as.numeric(boot_info$mean_pos_coef %||% object$pos_coef) -
+        ci_multiplier * boot_info$se_pos_coef,
+      ci_upper = as.numeric(boot_info$mean_pos_coef %||% object$pos_coef) +
+        ci_multiplier * boot_info$se_pos_coef,
       selection_freq = boot_info$selection_freq_pos,
       stringsAsFactors = FALSE
     )
@@ -113,10 +121,12 @@ summary_bootstrap <- function(object, conf_level = 0.95, min_freq = 0) {
       variable = object$var_names,
       direction = "negative",
       weight = as.numeric(object$neg_weights),
-      mean_coef = as.numeric(object$neg_coef),
+      mean_coef = as.numeric(boot_info$mean_neg_coef %||% object$neg_coef),
       se_coef = boot_info$se_neg_coef,
-      ci_lower = as.numeric(object$neg_coef) - z_val * boot_info$se_neg_coef,
-      ci_upper = as.numeric(object$neg_coef) + z_val * boot_info$se_neg_coef,
+      ci_lower = as.numeric(boot_info$mean_neg_coef %||% object$neg_coef) -
+        ci_multiplier * boot_info$se_neg_coef,
+      ci_upper = as.numeric(boot_info$mean_neg_coef %||% object$neg_coef) +
+        ci_multiplier * boot_info$se_neg_coef,
       selection_freq = boot_info$selection_freq_neg,
       stringsAsFactors = FALSE
     )
@@ -145,8 +155,10 @@ summary_bootstrap <- function(object, conf_level = 0.95, min_freq = 0) {
       cov_ci_lower <- apply(cov_block, 2, quantile, probs = alpha / 2, na.rm = TRUE)
       cov_ci_upper <- apply(cov_block, 2, quantile, probs = 1 - alpha / 2, na.rm = TRUE)
     } else {
-      cov_ci_lower <- as.numeric(boot_info$mean_cov_coef) - z_val * as.numeric(boot_info$se_cov_coef)
-      cov_ci_upper <- as.numeric(boot_info$mean_cov_coef) + z_val * as.numeric(boot_info$se_cov_coef)
+      cov_ci_lower <- as.numeric(boot_info$mean_cov_coef) -
+        ci_multiplier * as.numeric(boot_info$se_cov_coef)
+      cov_ci_upper <- as.numeric(boot_info$mean_cov_coef) +
+        ci_multiplier * as.numeric(boot_info$se_cov_coef)
     }
     cov_summary <- data.frame(
       term = names(boot_info$mean_cov_coef),

@@ -229,7 +229,7 @@ test_that("survey bootstrap preparation selects and scales replicate weights", {
     n_boot = 3,
     boot_method = "auto",
     survey_design = des,
-    svrep_type = "bootstrap",
+    svrep_type = "auto",
     family = "gaussian",
     y = dat$y,
     seed = 12
@@ -299,6 +299,46 @@ test_that("survey replicate bootstrap uses full-sample center and survey varianc
   expect_equal(as.numeric(res$svrep_center_pos_coef["x1"]), 1)
   expect_true(is.finite(res$se_pos_coef["x1"]))
   expect_equal(res$bootstrap_design, "survey_replicate_weights")
+})
+
+
+test_that("summary_bootstrap uses stored svrep center and SE when matrices are kept", {
+  boot_info <- list(
+    method = "svrep",
+    mean_pos_coef = c(x1 = 1, x2 = 0),
+    mean_neg_coef = c(x1 = 0, x2 = 0),
+    se_pos_coef = c(x1 = 0.2, x2 = 0.1),
+    se_neg_coef = c(x1 = 0.05, x2 = 0.05),
+    selection_freq_pos = c(x1 = 1, x2 = 0),
+    selection_freq_neg = c(x1 = 0, x2 = 0),
+    boot_pos_coef = rbind(c(x1 = 10, x2 = 0), c(x1 = 12, x2 = 0)),
+    boot_neg_coef = rbind(c(x1 = 0, x2 = 0), c(x1 = 0, x2 = 0)),
+    boot_success = c(TRUE, TRUE),
+    n_successful = 2,
+    variance_df = 8
+  )
+  fit <- structure(
+    list(
+      bootstrap = TRUE,
+      boot_info = boot_info,
+      var_names = c("x1", "x2"),
+      pos_weights = c(x1 = 1, x2 = 0),
+      neg_weights = c(x1 = 0, x2 = 0),
+      pos_coef = c(x1 = 99, x2 = 0),
+      neg_coef = c(x1 = 0, x2 = 0),
+      groups = NULL
+    ),
+    class = "sglwqs"
+  )
+
+  out <- summary_bootstrap(fit, conf_level = 0.95)
+  pos_x1 <- out[out$variable == "x1" & out$direction == "positive", ]
+  crit <- stats::qt(0.975, df = 8)
+
+  expect_equal(pos_x1$mean_coef, 1)
+  expect_equal(pos_x1$se_coef, 0.2)
+  expect_equal(pos_x1$ci_lower, 1 - crit * 0.2)
+  expect_equal(pos_x1$ci_upper, 1 + crit * 0.2)
 })
 
 

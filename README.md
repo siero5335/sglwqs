@@ -281,8 +281,10 @@ with `survey_design`; supplying `analysis_id` is recommended for reproducible
 NHANES workflows. When `bootstrap = TRUE`, `boot_method = "auto"` uses survey
 replicate weights (`boot_method = "svrep"`), normalizes each replicate-weight
 column for sparse-group selection, and computes bootstrap standard errors with
-the survey design's `scale` and `rscales`. If ordinary row resampling is intended,
-set `boot_method = "naive"` explicitly; this warns because it ignores survey
+the survey design's `scale` and `rscales`. The default `svrep_type = "auto"`
+uses bootstrap replicate weights; specify `svrep_type = "JK1"` or `"JKn"` when
+jackknife replicates are intended. If ordinary row resampling is intended, set
+`boot_method = "naive"` explicitly; this warns because it ignores survey
 cluster/strata structure. Survey-aware predictive metrics and calibration
 summaries are not currently implemented and will error rather than returning
 ordinary unweighted summaries.

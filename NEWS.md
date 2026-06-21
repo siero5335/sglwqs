@@ -35,9 +35,15 @@
   weight resampling. With `survey_design`, `boot_method = "auto"` chooses
   survey replicate weights, normalizes each replicate column for sparse-group
   selection, and computes bootstrap standard errors with the survey design's
-  `scale` and `rscales`. `boot_method = "naive"` remains available as an
-  explicit row-resampling fallback and warns when it ignores survey
+  `scale` and `rscales`. `svrep_type = "auto"` uses bootstrap replicate
+  weights; jackknife replicates remain available by explicitly setting
+  `svrep_type = "JK1"` or `"JKn"`. `boot_method = "naive"` remains available
+  as an explicit row-resampling fallback and warns when it ignores survey
   cluster/strata structure.
+* Revision follow-up: survey bootstrap summaries now use the stored
+  full-sample replicate center and survey-scale standard errors even when
+  bootstrap matrices are retained, avoiding ordinary percentile summaries for
+  survey replicate matrices.
 * Revision follow-up: validation-demo wording now avoids the phrase "valid
   inference", and survey-mode alignment checks now reject empty analysis IDs,
   compare stable analysis row names against `analysis_id`, and carry stable

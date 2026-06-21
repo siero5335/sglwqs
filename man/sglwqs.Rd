@@ -90,7 +90,9 @@ row bootstrap, and \code{"svrep"} uses replicate weights from
 
 \item{svrep_type}{Character. Replicate design type passed to
 \code{survey::as.svrepdesign()} when \code{boot_method = "svrep"} and
-\code{survey_design} is not already a replicate design.}
+\code{survey_design} is not already a replicate design. \code{"auto"}
+uses \code{"bootstrap"} replicate weights; specify \code{"JK1"} or
+\code{"JKn"} explicitly when jackknife replicate weights are intended.}
 
 \item{svrep_args}{Optional list of additional arguments passed to
 \code{survey::as.svrepdesign()}.}

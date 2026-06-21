@@ -198,16 +198,7 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   if (!identical(svrep_type, "auto")) {
     return(svrep_type)
   }
-  strata <- survey_design$strata
-  strata_df <- if (!is.null(strata)) {
-    tryCatch(as.data.frame(strata), error = function(e) NULL)
-  } else {
-    NULL
-  }
-  has_strata <- !is.null(strata_df) &&
-    ncol(strata_df) > 0L &&
-    length(unique(do.call(interaction, c(strata_df, list(drop = TRUE, lex.order = TRUE))))) > 1L
-  if (has_strata) "JKn" else "JK1"
+  "bootstrap"
 }
 
 

@@ -32,7 +32,9 @@
 #'   \code{survey_design}.
 #' @param svrep_type Character. Replicate design type passed to
 #'   \code{survey::as.svrepdesign()} when \code{boot_method = "svrep"} and
-#'   \code{survey_design} is not already a replicate design.
+#'   \code{survey_design} is not already a replicate design. \code{"auto"}
+#'   uses \code{"bootstrap"} replicate weights; specify \code{"JK1"} or
+#'   \code{"JKn"} explicitly when jackknife replicate weights are intended.
 #' @param svrep_args Optional list of additional arguments passed to
 #'   \code{survey::as.svrepdesign()}.
 #' @param parallel Logical. Whether to use parallel processing for bootstrap (default: FALSE).
@@ -316,13 +318,13 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       )
     }
   }
-  if (identical(boot_method, "auto")) {
+  if (bootstrap && identical(boot_method, "auto")) {
     boot_method <- if (!is.null(survey_design)) "svrep" else "naive"
   }
-  if (identical(boot_method, "svrep") && is.null(survey_design)) {
+  if (bootstrap && identical(boot_method, "svrep") && is.null(survey_design)) {
     stop("`boot_method = \"svrep\"` requires `survey_design`.", call. = FALSE)
   }
-  if (identical(boot_method, "naive") && !is.null(survey_design)) {
+  if (bootstrap && identical(boot_method, "naive") && !is.null(survey_design)) {
     warning(
       "`boot_method = \"naive\"` with `survey_design` ignores survey ",
       "cluster/strata structure; only design weights are reflected. Use ",
@@ -330,7 +332,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       call. = FALSE
     )
   }
-  if (identical(boot_method, "svrep") && identical(family, "binomial") &&
+  if (bootstrap && identical(boot_method, "svrep") && identical(family, "binomial") &&
       isTRUE(stratified_bootstrap)) {
     message(
       "Outcome stratification (`stratified_bootstrap = TRUE`) is ignored when ",
@@ -653,7 +655,9 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     } else {
       train_idx <- sample(n, floor(n * train_prop))
     }
-    train_idx <- sort(train_idx)
+    if (survey_mode) {
+      train_idx <- sort(train_idx)
+    }
     val_idx <- setdiff(seq_len(n), train_idx)
     
     # Quantile transform: learn breaks on train data, apply to val data (prevent leakage)
