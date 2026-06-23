@@ -30,7 +30,13 @@
   design weights for sparse-group selection, and the original survey design for
   downstream `survey::svyglm()` inference. Survey mode validates row alignment
   via `analysis_id` or stable row names and supports full-data and
-  validation-stage refits.
+  validation-stage refits. The downstream survey refit is supported, while
+  survey-weighted sparse-group selection remains limited by the current
+  `sparsegl` weighted backend; fits now retain selection diagnostics and warn
+  when weighted selection returns all-zero exposure coefficients. An
+  experimental `lambda_path` argument allows sensitivity checks with an
+  explicit backend lambda sequence while leaving `lambda` as the coefficient
+  extraction point.
 * Survey-aware bootstrap now supports `boot_method = "svrep"` for replicate
   weight resampling. With `survey_design`, `boot_method = "auto"` chooses
   survey replicate weights, normalizes each replicate column for sparse-group

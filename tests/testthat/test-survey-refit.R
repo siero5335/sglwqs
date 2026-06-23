@@ -60,7 +60,7 @@ test_that("obs_weights are accepted by selection and full glm refit works", {
   dat <- make_simple_data(n = 180, seed = 20)
   obs_weights <- seq(1, 2, length.out = nrow(dat))
   
-  fit <- sglwqs(
+  fit <- suppressWarnings(sglwqs(
     X = dat[, c("x1", "x2", "x3", "x4")],
     y = dat$y,
     covariates = data.frame(age = rnorm(nrow(dat))),
@@ -71,7 +71,7 @@ test_that("obs_weights are accepted by selection and full glm refit works", {
     nlambda = 20,
     seed = 99,
     verbose = FALSE
-  )
+  ))
   
   expect_s3_class(fit, "sglwqs")
   expect_equal(fit$obs_weights, obs_weights)
@@ -200,6 +200,195 @@ test_that("full svyglm refit works when survey is available", {
     covariates = cov_df[1:10, , drop = FALSE]
   ))
   expect_no_error(capture.output(summary(fit)))
+})
+
+
+test_that("weighted survey selection records lambda diagnostics", {
+  testthat::skip_if_not_installed("survey")
+
+  dat <- make_simple_data(n = 120, seed = 141)
+  rownames(dat) <- paste0("id", seq_len(nrow(dat)))
+  cov_df <- data.frame(age = rnorm(nrow(dat)), row.names = rownames(dat))
+  design_df <- data.frame(
+    y = dat$y,
+    age = cov_df$age,
+    w = runif(nrow(dat), 0.5, 2),
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
+  )
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
+
+  fit <- suppressWarnings(sglwqs(
+    X = dat[, c("x1", "x2", "x3", "x4")],
+    y = dat$y,
+    covariates = cov_df,
+    refit = "full",
+    refit_engine = "svyglm",
+    survey_design = des,
+    analysis_id = rownames(dat),
+    nfolds = 3,
+    nlambda = 10,
+    seed = 141,
+    verbose = FALSE
+  ))
+
+  diag <- fit$selection_diagnostics
+  expect_true(is.list(diag))
+  expect_true(isTRUE(diag$survey_mode))
+  expect_true(isTRUE(diag$weighted_selection))
+  expect_true(is.finite(diag$lambda_path_min))
+  expect_true(is.finite(diag$lambda_path_max))
+  expect_true(diag$lambda_path_length >= 1)
+  expect_true(all(c(
+    "selection_lambda_path",
+    "selection_exposure_nonzero"
+  ) %in% names(fit$diagnostics)))
+})
+
+
+test_that("explicit lambda_path is passed to sparsegl backend separately from lambda", {
+  testthat::skip_if_not_installed("survey")
+
+  dat <- make_simple_data(n = 120, seed = 143)
+  rownames(dat) <- paste0("id", seq_len(nrow(dat)))
+  cov_df <- data.frame(age = rnorm(nrow(dat)), row.names = rownames(dat))
+  design_df <- data.frame(
+    y = dat$y,
+    age = cov_df$age,
+    w = runif(nrow(dat), 0.5, 2),
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
+  )
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
+  lambda_path <- exp(seq(log(0.1), log(1e-3), length.out = 8))
+
+  fit <- suppressWarnings(sglwqs(
+    X = dat[, c("x1", "x2", "x3", "x4")],
+    y = dat$y,
+    covariates = cov_df,
+    refit = "full",
+    refit_engine = "svyglm",
+    survey_design = des,
+    analysis_id = rownames(dat),
+    lambda = "lambda.min",
+    lambda_path = lambda_path,
+    nfolds = 3,
+    seed = 143,
+    verbose = FALSE
+  ))
+
+  expect_true(length(fit$fit$lambda) <= length(lambda_path))
+  expect_true(all(signif(fit$fit$lambda, 12) %in% signif(lambda_path, 12)))
+  expect_equal(fit$selection_diagnostics$lambda_path_source, "user_explicit")
+  expect_equal(
+    fit$selection_diagnostics$lambda_path_length,
+    length(fit$fit$lambda)
+  )
+})
+
+
+test_that("lambda_path validates early and bootstrap errors are classifiable", {
+  expect_error(
+    sglwqs(
+      X = matrix(rnorm(40), ncol = 2),
+      y = rnorm(20),
+      lambda_path = c(0.1, 0, 0.001),
+      verbose = FALSE
+    ),
+    "lambda_path"
+  )
+  expect_equal(
+    sglwqs:::.classify_boot_error("object 'boundary' not found"),
+    "backend_convergence"
+  )
+  expect_equal(
+    sglwqs:::.classify_boot_error("sparsegl_irls failed"),
+    "backend_convergence"
+  )
+  expect_equal(
+    sglwqs:::.classify_boot_error("lambda sequence failed"),
+    "lambda_path"
+  )
+})
+
+
+test_that("weighted survey boundary lambda selection warns", {
+  testthat::skip_if_not_installed("survey")
+
+  dat <- make_simple_data(n = 120, seed = 144)
+  rownames(dat) <- paste0("id", seq_len(nrow(dat)))
+  cov_df <- data.frame(age = rnorm(nrow(dat)), row.names = rownames(dat))
+  design_df <- data.frame(
+    y = dat$y,
+    age = cov_df$age,
+    w = runif(nrow(dat), 0.5, 2),
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
+  )
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
+
+  fit <- NULL
+  expect_warning(
+    fit <- sglwqs(
+      X = dat[, c("x1", "x2", "x3", "x4")],
+      y = dat$y,
+      covariates = cov_df,
+      refit = "full",
+      refit_engine = "svyglm",
+      survey_design = des,
+      analysis_id = rownames(dat),
+      lambda = 1e-5,
+      lambda_path = c(1e-4, 1e-5),
+      nfolds = 3,
+      seed = 144,
+      verbose = FALSE
+    ),
+    "path boundary"
+  )
+  expect_true(isTRUE(fit$selection_diagnostics$selected_lambda_at_path_boundary))
+})
+
+
+test_that("weighted survey all-zero exposure selection is explicit", {
+  testthat::skip_if_not_installed("survey")
+
+  dat <- make_simple_data(n = 120, seed = 142)
+  rownames(dat) <- paste0("id", seq_len(nrow(dat)))
+  cov_df <- data.frame(age = rnorm(nrow(dat)), row.names = rownames(dat))
+  design_df <- data.frame(
+    y = dat$y,
+    age = cov_df$age,
+    w = runif(nrow(dat), 0.5, 2),
+    .analysis_id = rownames(dat),
+    row.names = rownames(dat)
+  )
+  des <- survey::svydesign(ids = ~1, weights = ~w, data = design_df)
+
+  fit <- NULL
+  expect_warning(
+    fit <- sglwqs(
+        X = dat[, c("x1", "x2", "x3", "x4")],
+        y = dat$y,
+        covariates = cov_df,
+        refit = "full",
+        refit_engine = "svyglm",
+        survey_design = des,
+        analysis_id = rownames(dat),
+        lambda = 1e6,
+        nfolds = 3,
+        nlambda = 10,
+        seed = 142,
+        verbose = FALSE
+      ),
+    "all-zero exposure coefficients"
+  )
+
+  expect_true(isTRUE(fit$selection_diagnostics$all_zero_exposure))
+  expect_equal(fit$selection_diagnostics$nonzero_positive_coef, 0)
+  expect_equal(fit$selection_diagnostics$nonzero_negative_coef, 0)
+  expect_equal(fit$selection_diagnostics$positive_weight_sum, 0)
+  expect_equal(fit$selection_diagnostics$negative_weight_sum, 0)
+  expect_true("selection_all_zero_exposure" %in% names(fit$diagnostics))
 })
 
 

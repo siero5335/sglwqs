@@ -13,6 +13,7 @@ sglwqs(
   family = c("gaussian", "binomial"),
   lambda = "lambda.min",
   nfolds = 10,
+  lambda_path = NULL,
   penalize_covariates = FALSE,
   group_by_compound = NULL,
   group_structure = "direction",
@@ -69,6 +70,11 @@ Example: list(PCBs = c("var1", "var2"), Phthalates = c("var3", "var4"))}
 or a specific lambda value (default: "lambda.min").}
 
 \item{nfolds}{Integer. Number of folds for cross-validation (default: 10).}
+
+\item{lambda_path}{Optional numeric vector passed to the backend
+\code{cv.sparsegl(lambda = ...)}. This is an experimental escape hatch for
+survey-weighted selection diagnostics; \code{lambda} still controls the
+coefficient extraction point.}
 
 \item{penalize_covariates}{Logical. Whether to apply sparse penalty to covariates (default: FALSE).}
 
@@ -148,7 +154,10 @@ otherwise unweighted.}
 \item{refit_engine}{Character. One of \code{"glm"} or \code{"svyglm"}.}
 
 \item{survey_design}{Optional pre-constructed \code{svydesign} or
-\code{svrepdesign} object used when \code{refit_engine = "svyglm"}.}
+\code{svrepdesign} object used when \code{refit_engine = "svyglm"}.
+Downstream survey refit is supported; survey-weighted sparse-group
+selection uses the current \pkg{sparsegl} weighted backend and records
+\code{selection_diagnostics}, including an all-zero exposure flag.}
 
 \item{analysis_id}{Optional analysis-row identifier used to verify alignment
 between the modeling data and \code{survey_design}. If \code{data} is

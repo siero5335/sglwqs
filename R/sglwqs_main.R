@@ -17,6 +17,10 @@
 #' @param family Character. Family for GLM ("gaussian" or "binomial", default: "gaussian").
 #' @param lambda Character or numeric. Lambda selection method ("lambda.min" or "lambda.1se") 
 #'   or a specific lambda value (default: "lambda.min").
+#' @param lambda_path Optional numeric vector passed to the backend
+#'   \code{cv.sparsegl(lambda = ...)}. This is an experimental escape hatch for
+#'   survey-weighted selection diagnostics; \code{lambda} still controls the
+#'   coefficient extraction point.
 #' @param nfolds Integer. Number of folds for cross-validation (default: 10).
 #' @param penalize_covariates Logical. Whether to apply sparse penalty to covariates (default: FALSE).
 #' @param group_by_compound Logical. Whether to group variables by chemical groups for
@@ -74,6 +78,9 @@
 #' @param refit_engine Character. One of \code{"glm"} or \code{"svyglm"}.
 #' @param survey_design Optional pre-constructed \code{svydesign} or
 #'   \code{svrepdesign} object used when \code{refit_engine = "svyglm"}.
+#'   Downstream survey refit is supported; survey-weighted sparse-group
+#'   selection uses the current \pkg{sparsegl} weighted backend and records
+#'   \code{selection_diagnostics}, including an all-zero exposure flag.
 #' @param analysis_id Optional analysis-row identifier used to verify alignment
 #'   between the modeling data and \code{survey_design}. If \code{data} is
 #'   supplied, a single column name may be used.
@@ -227,6 +234,7 @@
 sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quantiles = 4, 
                    family = c("gaussian", "binomial"),
                    lambda = "lambda.min", nfolds = 10,
+                   lambda_path = NULL,
                    penalize_covariates = FALSE, 
                    group_by_compound = NULL,
                    group_structure = "direction",
@@ -266,6 +274,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
   obs_weights_supplied <- !missing(obs_weights) && !is.null(obs_weights)
   quantile_weights_supplied <- !missing(quantile_weights) && !is.null(quantile_weights)
   family <- match.arg(family)
+  lambda_path <- .validate_lambda_path(lambda_path)
   refit <- if (refit_missing) "none" else match.arg(refit)
   refit_requested <- refit
   if (validation && !refit_missing && !identical(refit_requested, "validation")) {
@@ -747,6 +756,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       family = family,
       lambda = lambda,
       nfolds = nfolds,
+      lambda_path = lambda_path,
       n_boot = n_boot,
       seed = NULL,  # Seed already set
       verbose = verbose,
@@ -787,6 +797,8 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       ci_upper_cov = boot_result$ci_upper_cov,
       boot_success = boot_result$boot_success,
       boot_error_msg = boot_result$boot_error_msg,
+      boot_error_class = boot_result$boot_error_class,
+      boot_error_counts = boot_result$boot_error_counts,
       parallel_batch_errors = boot_result$parallel_batch_errors,
       n_parallel_batch_failures = boot_result$n_parallel_batch_failures,
       n_successful = boot_result$n_successful,
@@ -836,6 +848,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       family = family,
       lambda = lambda,
       nfolds = nfolds,
+      lambda_path = lambda_path,
       obs_weights = obs_weights_train,
       ...
     )
@@ -859,6 +872,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
       family = family,
       lambda = lambda,
       nfolds = nfolds,
+      lambda_path = lambda_path,
       obs_weights = obs_weights_train,
       ...
     )
@@ -879,6 +893,30 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     groups = groups,
     handle_collinearity = "net"
   )
+  selection_diagnostics <- fit_result$selection_diagnostics
+  if (!is.null(selection_diagnostics)) {
+    selection_diagnostics$positive_weight_sum <- sum(weight_result$pos_weights, na.rm = TRUE)
+    selection_diagnostics$negative_weight_sum <- sum(weight_result$neg_weights, na.rm = TRUE)
+    selection_diagnostics$weighted_selection <- !is.null(obs_weights_train)
+    selection_diagnostics$survey_mode <- isTRUE(survey_mode)
+    if ((isTRUE(survey_mode) || !is.null(obs_weights_train)) &&
+        isTRUE(selection_diagnostics$all_zero_exposure)) {
+      warning(
+        "Weighted SGL selection returned all-zero exposure coefficients. ",
+        "Downstream survey refit may therefore have no retained WQS exposure index. ",
+        "Inspect `fit$selection_diagnostics` for the lambda path and backend diagnostics.",
+        call. = FALSE
+      )
+    } else if ((isTRUE(survey_mode) || !is.null(obs_weights_train)) &&
+               isTRUE(selection_diagnostics$selected_lambda_at_path_boundary)) {
+      warning(
+        "Weighted SGL selected lambda at the path boundary. ",
+        "The lambda path may be too short or overly sparse for the weighted selection problem. ",
+        "Inspect `fit$selection_diagnostics` and consider an explicit `lambda_path` sensitivity check.",
+        call. = FALSE
+      )
+    }
+  }
 
   # In bootstrap mode, overwrite with "mean of per-draw weights" (manuscript estimator)
 
@@ -1042,6 +1080,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     
     # Model settings
     lambda = lambda,
+    lambda_path = lambda_path,
     n_quantiles = n_quantiles,
     family = family,
     refit = refit,
@@ -1073,6 +1112,7 @@ sglwqs <- function(X = NULL, y = NULL, covariates = NULL, groups = NULL, n_quant
     analysis_weights = analysis_weights,
     quantile_weights = quantile_weights,
     quantile_weights_source = quantile_weights_source,
+    selection_diagnostics = selection_diagnostics,
     
     # Minor direction exclusion
     minor_threshold = minor_threshold,

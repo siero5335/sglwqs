@@ -13,6 +13,7 @@
 #' @param penalize_covariates Logical.
 #' @param family Character.
 #' @param lambda Character or numeric.
+#' @param lambda_path Optional numeric lambda sequence passed to cv.sparsegl.
 #' @param nfolds Integer.
 #' @param obs_weights Optional numeric observation weights for selection loss.
 #' @param ... Additional arguments to cv.sparsegl.
@@ -23,12 +24,14 @@
 fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
                           groups, group_by_compound, group_structure,
                           penalize_covariates, family, lambda, nfolds,
+                          lambda_path = NULL,
                           obs_weights = NULL, ...) {
   
   n <- nrow(X_quantile)
   p <- ncol(X_quantile)
   q <- if (is.null(cov_matrix)) 0 else ncol(cov_matrix)
   obs_weights <- .validate_obs_weights(obs_weights, n)
+  lambda_path <- .validate_lambda_path(lambda_path)
   sparsegl_family <- .coerce_sparsegl_family(family, obs_weights)
   
   # Create group mapping (for compound groups)
@@ -107,19 +110,27 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
     }
   }
   
+  backend_warnings <- character(0)
+
   # Fit Sparse Group Lasso (with error handling)
   fit <- tryCatch({
-    sparsegl::cv.sparsegl(
-      x = design_matrix,
-      y = y,
-      group = group,
-      family = sparsegl_family,
-      pf_sparse = pf_sparse,
-      pf_group = pf_group,
-      lower_bnd = lower_bnd,
-      nfolds = nfolds,
-      weights = obs_weights,
-      ...
+    withCallingHandlers(
+      sparsegl::cv.sparsegl(
+        x = design_matrix,
+        y = y,
+        group = group,
+        family = sparsegl_family,
+        pf_sparse = pf_sparse,
+        pf_group = pf_group,
+        lower_bnd = lower_bnd,
+        nfolds = nfolds,
+        lambda = lambda_path,
+        weights = obs_weights,
+        ...
+      ),
+      warning = function(w) {
+        backend_warnings <<- c(backend_warnings, conditionMessage(w))
+      }
     )
   }, error = function(e) {
     # Make error messages more informative
@@ -173,6 +184,15 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   } else {
     cov_coef <- NULL
   }
+
+  selection_diagnostics <- .selection_diagnostics_from_fit(
+    fit = fit,
+    requested_lambda = lambda,
+    lambda_path_source = if (is.null(lambda_path)) "sparsegl_auto" else "user_explicit",
+    pos_coef = pos_coef,
+    neg_coef = neg_coef,
+    backend_warnings = backend_warnings
+  )
   
   return(list(
     fit = fit,
@@ -182,8 +202,62 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
     cov_coef = cov_coef,
     intercept = intercept,
     design_matrix = design_matrix,
-    group = group
+    group = group,
+    selection_diagnostics = selection_diagnostics
   ))
+}
+
+
+.validate_lambda_path <- function(lambda_path) {
+  if (is.null(lambda_path)) {
+    return(NULL)
+  }
+  if (!is.numeric(lambda_path) || length(lambda_path) < 2L ||
+      any(!is.finite(lambda_path)) || any(lambda_path <= 0)) {
+    stop(
+      "`lambda_path` must be a numeric vector of at least two positive finite values.",
+      call. = FALSE
+    )
+  }
+  as.numeric(lambda_path)
+}
+
+
+#' @keywords internal
+.selection_diagnostics_from_fit <- function(fit, requested_lambda,
+                                            lambda_path_source = "sparsegl_auto",
+                                            pos_coef, neg_coef,
+                                            backend_warnings = character(0)) {
+  lam <- as.numeric(fit$lambda %||% numeric(0))
+  finite_lam <- lam[is.finite(lam)]
+  selected <- if (is.numeric(requested_lambda)) {
+    as.numeric(requested_lambda)[1]
+  } else {
+    as.numeric(fit[[requested_lambda]] %||% NA_real_)[1]
+  }
+  path_min <- if (length(finite_lam) > 0) min(finite_lam) else NA_real_
+  path_max <- if (length(finite_lam) > 0) max(finite_lam) else NA_real_
+  selected_on_edge <- is.finite(selected) && length(finite_lam) > 0 &&
+    (isTRUE(all.equal(selected, path_min)) ||
+       isTRUE(all.equal(selected, path_max)))
+  nonzero_pos <- sum(abs(pos_coef) > 0, na.rm = TRUE)
+  nonzero_neg <- sum(abs(neg_coef) > 0, na.rm = TRUE)
+
+  list(
+    requested_lambda = requested_lambda,
+    selected_lambda = selected,
+    lambda_path_source = lambda_path_source,
+    lambda_path_length = length(finite_lam),
+    lambda_path_min = path_min,
+    lambda_path_max = path_max,
+    selected_lambda_at_path_boundary = isTRUE(selected_on_edge),
+    nonzero_positive_coef = nonzero_pos,
+    nonzero_negative_coef = nonzero_neg,
+    all_zero_exposure = (nonzero_pos + nonzero_neg) == 0L,
+    backend_jerr = fit$sparsegl.fit$jerr %||% NA_integer_,
+    backend_warnings = unique(backend_warnings),
+    backend_error = NA_character_
+  )
 }
 
 
@@ -488,6 +562,28 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   }
 }
 
+
+#' @keywords internal
+.classify_boot_error <- function(msg) {
+  msg <- msg %||% ""
+  if (!nzchar(msg)) {
+    return("unknown")
+  }
+  if (grepl("boundary|sparsegl_irls|converge|convergence|iterate", msg, ignore.case = TRUE)) {
+    return("backend_convergence")
+  }
+  if (grepl("lambda", msg, ignore.case = TRUE)) {
+    return("lambda_path")
+  }
+  if (grepl("fold|cv|cross", msg, ignore.case = TRUE)) {
+    return("cross_validation")
+  }
+  if (grepl("singular|rank|collinear", msg, ignore.case = TRUE)) {
+    return("rank_deficiency")
+  }
+  "other"
+}
+
 #' Internal Function: Bootstrap Aggregation for Weights
 #'
 #' Performs bootstrap aggregation to stabilize weight estimates.
@@ -504,6 +600,7 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
 #' @param penalize_covariates Logical.
 #' @param family Character.
 #' @param lambda Character or numeric.
+#' @param lambda_path Optional numeric lambda sequence passed to cv.sparsegl.
 #' @param nfolds Integer.
 #' @param n_boot Number of bootstrap iterations.
 #' @param seed Random seed.
@@ -517,6 +614,7 @@ fit_sgl_core <- function(X_quantile, y, cov_matrix, var_names, cov_names,
 bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
                            groups, group_by_compound, group_structure,
                            penalize_covariates, family, lambda, nfolds,
+                           lambda_path = NULL,
                            n_boot, seed, verbose, parallel = FALSE,
                            checkpoint_dir = NULL, checkpoint_interval = 50,
                            cleanup_checkpoint = TRUE, 
@@ -533,6 +631,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   p <- ncol(X_quantile)
   q_cov <- length(cov_names)
   obs_weights <- .validate_obs_weights(obs_weights, n)
+  lambda_path <- .validate_lambda_path(lambda_path)
   boot_prep <- .prepare_boot_weights(
     n = n,
     n_boot = n_boot,
@@ -569,6 +668,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   boot_neg_index_sum_by_group <- NULL
   boot_success <- NULL
   boot_error_msg <- NULL
+  boot_error_class <- NULL
   completed_boots <- integer(0)
   batch_errors <- character(0)
   
@@ -599,6 +699,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
         boot_neg_index_sum_by_group <- checkpoint_data$boot_neg_index_sum_by_group
         boot_success <- checkpoint_data$boot_success
         boot_error_msg <- checkpoint_data$boot_error_msg
+        boot_error_class <- checkpoint_data$boot_error_class %||% NULL
         # Older checkpoints may have marked failed batch indices as completed.
         # Trust the success vector so failed iterations are retried.
         completed_boots <- which(!is.na(boot_success) & boot_success)
@@ -656,6 +757,9 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
   if (is.null(boot_error_msg)) {
     boot_error_msg <- rep(NA_character_, n_boot)
   }
+  if (is.null(boot_error_class)) {
+    boot_error_class <- rep(NA_character_, n_boot)
+  }
   
   # Remaining bootstrap indices
   remaining_boots <- setdiff(seq_len(n_boot), completed_boots)
@@ -668,6 +772,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
     run_single_boot <- function(b, X_quantile, y, cov_matrix, var_names, cov_names,
                                  groups, group_by_compound, group_structure,
                                  penalize_covariates, family, lambda, nfolds,
+                                 lambda_path = NULL,
                                  stratified = TRUE, obs_weights = NULL,
                                  boot_prep, ...) {
       
@@ -701,6 +806,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
           family = family,
           lambda = lambda,
           nfolds = nfolds,
+          lambda_path = lambda_path,
           obs_weights = weights_boot,
           ...
         )
@@ -781,10 +887,12 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
         }
         boot_success[b] <<- TRUE
         boot_error_msg[b] <<- NA_character_
+        boot_error_class[b] <<- NA_character_
         return(TRUE)
       }
 
       boot_error_msg[b] <<- result$error_msg %||% "Unknown bootstrap failure"
+      boot_error_class[b] <<- .classify_boot_error(boot_error_msg[b])
       FALSE
     }
 
@@ -795,6 +903,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
           b, X_quantile, y, cov_matrix, var_names, cov_names,
           groups, group_by_compound, group_structure,
           penalize_covariates, family, lambda, nfolds,
+          lambda_path = lambda_path,
           stratified = stratified,
           obs_weights = obs_weights,
           boot_prep = boot_prep,
@@ -820,6 +929,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
           boot_neg_index_sum_by_group = boot_neg_index_sum_by_group,
           boot_success = boot_success,
           boot_error_msg = boot_error_msg,
+          boot_error_class = boot_error_class,
           completed_boots = completed_boots,
           n_boot = n_boot,
           n_boot_requested = n_boot_requested,
@@ -883,6 +993,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
                   run_single_boot(b, X_quantile, y, cov_matrix, var_names, cov_names,
                                   groups, group_by_compound, group_structure,
                                   penalize_covariates, family, lambda, nfolds,
+                                  lambda_path = lambda_path,
                                   stratified = stratified,
                                   obs_weights = obs_weights,
                                   boot_prep = boot_prep,
@@ -1014,6 +1125,7 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
           family = family,
           lambda = lambda,
           nfolds = nfolds,
+          lambda_path = lambda_path,
           obs_weights = obs_weights,
           ...
         )
@@ -1201,6 +1313,8 @@ bootstrap_sgl <- function(X_quantile, y, cov_matrix, var_names, cov_names,
     boot_neg_index_sum_by_group = boot_neg_index_sum_by_group,
     boot_success = boot_success,
     boot_error_msg = boot_error_msg,
+    boot_error_class = boot_error_class,
+    boot_error_counts = sort(table(stats::na.omit(boot_error_class)), decreasing = TRUE),
     parallel_batch_errors = unique(batch_errors),
     n_parallel_batch_failures = length(batch_errors),
     n_successful = successful_boots,
