@@ -33,10 +33,11 @@
   validation-stage refits. The downstream survey refit is supported, while
   survey-weighted sparse-group selection remains limited by the current
   `sparsegl` weighted backend; fits now retain selection diagnostics and warn
-  when weighted selection returns all-zero exposure coefficients. An
-  experimental `lambda_path` argument allows sensitivity checks with an
-  explicit backend lambda sequence while leaving `lambda` as the coefficient
-  extraction point.
+  when weighted selection returns all-zero exposure coefficients or selects a
+  lambda value at the edge of the backend path. These all-zero and boundary
+  indicators are backend diagnostics, not fit failures. An experimental
+  `lambda_path` argument allows sensitivity checks with an explicit backend
+  lambda sequence while leaving `lambda` as the coefficient extraction point.
 * Survey-aware bootstrap now supports `boot_method = "svrep"` for replicate
   weight resampling. With `survey_design`, `boot_method = "auto"` chooses
   survey replicate weights, normalizes each replicate column for sparse-group

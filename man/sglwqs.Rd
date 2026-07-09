@@ -74,7 +74,8 @@ or a specific lambda value (default: "lambda.min").}
 \item{lambda_path}{Optional numeric vector passed to the backend
 \code{cv.sparsegl(lambda = ...)}. This is an experimental escape hatch for
 survey-weighted selection diagnostics; \code{lambda} still controls the
-coefficient extraction point.}
+coefficient extraction point. When supplied, the backend uses this explicit
+sequence instead of generating an automatic path from \code{nlambda}.}
 
 \item{penalize_covariates}{Logical. Whether to apply sparse penalty to covariates (default: FALSE).}
 
@@ -157,7 +158,9 @@ otherwise unweighted.}
 \code{svrepdesign} object used when \code{refit_engine = "svyglm"}.
 Downstream survey refit is supported; survey-weighted sparse-group
 selection uses the current \pkg{sparsegl} weighted backend and records
-\code{selection_diagnostics}, including an all-zero exposure flag.}
+\code{selection_diagnostics}, including all-zero exposure and
+lambda-path-boundary flags. These flags are backend diagnostics rather
+than fit failures.}
 
 \item{analysis_id}{Optional analysis-row identifier used to verify alignment
 between the modeling data and \code{survey_design}. If \code{data} is
