@@ -4,6 +4,17 @@
 
 `sglwqs` is an R package for Weighted Quantile Sum (WQS) regression with Sparse Group Lasso. It evaluates mixture effects of multiple exposure variables and simultaneously estimates positive and negative direction weights.
 
+## Manuscript Revision Branch
+
+For the Environment International Rev1 resubmission, the corresponding
+review branch is `paper/envint-revision-docs` (revision documentation commit
+`2fdd519`). Reviewers who need to inspect or reproduce the revision-specific
+package state can install that branch directly:
+
+```r
+remotes::install_github("siero5335/sglwqs@paper/envint-revision-docs")
+```
+
 ## Features
 
 - **Quantile Transformation**: Automatically converts continuous variables into quantile-based categories
