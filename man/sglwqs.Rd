@@ -195,7 +195,7 @@ defines covariates.}
 }
 \value{
 An object of class \code{"sglwqs"} with point estimates plus any
-requested inference layers. Common components include:
+requested summary layers. Common components include:
 \itemize{
 \item \code{pos_weights}, \code{neg_weights}: WQS weights.
 \item \code{cov_coef}: Penalized covariate coefficients from the sparse-group
@@ -204,9 +204,9 @@ selection stage.
 bootstrap summaries for exposure coefficients, covariates, and WQS
 index-sum summaries.
 \item \code{validation_info}: Present when \code{validation = TRUE}; contains
-downstream held-out GLM inference.
+downstream held-out GLM summaries.
 \item \code{refit_info}: Present when \code{refit = "full"}; contains
-downstream full-data GLM inference.
+downstream full-data GLM summaries.
 \item \code{diagnostics}: Fact-only diagnostic summaries returned by
 \code{compute_diagnostics()}.
 }
@@ -243,7 +243,7 @@ estimation, lambda selection, bootstrap aggregation, or minor-direction
 filtering; p-values are therefore conditional summaries, not formal
 post-selection inference.
 
-\strong{Two-Stage Inference Paths:}
+\strong{Two-Stage Analysis and Summary Paths:}
 \itemize{
 \item \code{bootstrap = FALSE, refit = "none"} returns point estimates only.
 \item \code{bootstrap = TRUE, refit = "none"} returns bootstrap summaries for
@@ -251,10 +251,12 @@ weight stability, covariate coefficients, and WQS index-sum summaries.
 \item \code{refit = "full"} runs an in-sample downstream GLM after weights are
 fixed.
 \item \code{validation = TRUE} (equivalently \code{refit = "validation"})
-runs held-out downstream GLM inference.
+runs held-out downstream GLM summaries conditional on the fixed
+training-estimated indices.
 }
 Use \code{summary_inference()} or \code{plot_inference_results()} to access
-whichever downstream or bootstrap-only inference source is active.
+whichever downstream or bootstrap-only summary source is active. These
+function names are retained for backward compatibility.
 
 \strong{Flexible Input Specification:}
 In addition to the traditional \code{X}/\code{y}/\code{covariates} interface,

@@ -87,7 +87,7 @@
 #' sources are present, \code{refit_info} is preferred over
 #' \code{validation_info} because it uses the full analysis sample.
 #'
-#' Access pooled downstream inference via:
+#' Access pooled downstream coefficient and uncertainty summaries via:
 #' \itemize{
 #'   \item \code{fit$pooled$inference$wqs_pos}
 #'   \item \code{fit$pooled$inference$group_results}
@@ -99,7 +99,7 @@
 #' for WQS index-sum estimates and covariates.
 #'
 #' For backward compatibility, \code{fit$pooled$validation} remains populated
-#' when validation-based inference is used.
+#' when validation-based summaries are used.
 #'
 #' @examples
 #' \dontrun{
@@ -1358,9 +1358,9 @@ print.sglwqs_mids <- function(x, ...) {
   inf <- .get_mi_pooled_inference(x)
   if (!is.null(inf)) {
     header <- if (identical(inf$source_used, "refit_info")) {
-      "--- Pooled Refit Inference (Rubin's Rules) ---"
+      "--- Pooled Refit Summary (Rubin's Rules) ---"
     } else {
-      "--- Pooled Validation Inference (Rubin's Rules) ---"
+      "--- Pooled Validation Summary (Rubin's Rules) ---"
     }
     cat("\n", header, "\n", sep = "")
     val <- inf

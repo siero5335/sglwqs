@@ -1,3 +1,12 @@
+# sglwqs 1.0.1
+
+## Documentation
+
+* Downstream GLM and multiple-imputation documentation now describes returned
+  values as coefficient, uncertainty, or model summaries rather than using
+  broad inferential wording. Function and object names remain unchanged for
+  backward compatibility; numerical calculations are unchanged.
+
 # sglwqs 1.0.0
 
 ## Publication

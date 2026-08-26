@@ -62,8 +62,22 @@ These functions work for both sglwqs and sglwqs_mids objects:
 }
 }
 
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/siero5335/sglwqs}
+  \item \doi{10.1016/j.envint.2026.110480}
+  \item Report bugs at \url{https://github.com/siero5335/sglwqs/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Akifumi Eguchi \email{siero5335@gmail.com}
+
+Authors:
+\itemize{
+  \item Akifumi Eguchi \email{siero5335@gmail.com}
+}
 
 }
 \keyword{internal}

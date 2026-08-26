@@ -6,7 +6,7 @@ authors:
   - family-names: Eguchi
     given-names: Akifumi
     orcid: "https://orcid.org/0000-0001-5858-8132"
-version: 1.0.0
+version: 1.0.1
 date-released: 2026-08-26
 license: MIT
 repository-code: "https://github.com/siero5335/sglwqs"

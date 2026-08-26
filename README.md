@@ -15,12 +15,12 @@ The SGL-WQS methods article is published in *Environment International*:
 > [https://doi.org/10.1016/j.envint.2026.110480](https://doi.org/10.1016/j.envint.2026.110480)
 
 The DOI resolves to the publisher's open-access article page.
-The accepted-revision implementation is released as `v1.0.0`; the original
-`paper/envint-revision-docs` branch remains available for revision-history
-reproducibility.
+The accepted-revision implementation is archived as `v1.0.0`; the current
+maintenance release is `v1.0.1`. The original `paper/envint-revision-docs`
+branch remains available for revision-history reproducibility.
 
 ```r
-remotes::install_github("siero5335/sglwqs@v1.0.0")
+remotes::install_github("siero5335/sglwqs@v1.0.1")
 ```
 
 ## Features
@@ -52,7 +52,7 @@ install.packages("mice")                        # Multiple imputation
 
 ```r
 # Method 1: Install from tar.gz (recommended)
-install.packages("sglwqs_1.0.0.tar.gz", repos = NULL, type = "source")
+install.packages("sglwqs_1.0.1.tar.gz", repos = NULL, type = "source")
 
 # Method 2: Install from directory
 install.packages("/path/to/sglwqs", repos = NULL, type = "source")
@@ -80,19 +80,19 @@ source("R/plot_weights.R")  # Visualization functions
 
 ## Usage
 
-### Choosing an Inference Path
+### Choosing an Analysis and Summary Path
 
-`sglwqs` separates weight estimation from downstream effect-size estimation.
-The main configuration choice is therefore not just "which model", but also
-"which uncertainty path".
+`sglwqs` separates weight estimation from downstream model summaries. The main
+configuration choice is therefore not just "which model", but also which
+coefficient and uncertainty summaries are requested.
 
 | Goal | Suggested settings | What you get |
 |---|---|---|
 | Quick prototype / point estimates only | `bootstrap = FALSE`, `refit = "none"` | Weights and sparse coefficients only |
 | Weight stability without downstream GLM | `bootstrap = TRUE`, `refit = "none"` | Bootstrap summaries for exposures, covariates, and WQS index sums |
-| Full-data downstream GLM (small `n`) | `refit = "full"` | In-sample downstream GLM inference |
+| Full-data downstream GLM (small `n`) | `refit = "full"` | Downstream GLM coefficient and uncertainty summaries from the full analysis sample |
 | Held-out downstream GLM | `validation = TRUE` | Exploratory validation-split downstream GLM summaries conditional on fixed training-estimated indices |
-| Missing data + downstream GLM | `sglwqs_mice(...)` with `refit = "full"` or `validation = TRUE` | Rubin-pooled downstream inference |
+| Missing data + downstream GLM | `sglwqs_mice(...)` with `refit = "full"` or `validation = TRUE` | Rubin-pooled downstream coefficient and uncertainty summaries |
 | Missing data + bootstrap-only summaries | `sglwqs_mice(...)` with `bootstrap = TRUE`, `refit = "none"` | Rubin-pooled bootstrap summaries |
 
 Unified accessors:

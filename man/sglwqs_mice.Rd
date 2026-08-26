@@ -160,7 +160,7 @@ whenever each imputation fit includes a downstream GLM, either via
 sources are present, \code{refit_info} is preferred over
 \code{validation_info} because it uses the full analysis sample.
 
-Access pooled downstream inference via:
+Access pooled downstream coefficient and uncertainty summaries via:
 \itemize{
 \item \code{fit$pooled$inference$wqs_pos}
 \item \code{fit$pooled$inference$group_results}
@@ -172,7 +172,7 @@ When \code{bootstrap = TRUE} but no downstream GLM is requested,
 for WQS index-sum estimates and covariates.
 
 For backward compatibility, \code{fit$pooled$validation} remains populated
-when validation-based inference is used.
+when validation-based summaries are used.
 }
 \examples{
 \dontrun{

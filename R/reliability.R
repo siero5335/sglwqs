@@ -240,15 +240,15 @@ compute_diagnostics.sglwqs <- function(fit) {
   } else if (has_inference && identical(attr(active_info, "source"), "validation_info")) {
     items$two_stage_path <- .mk_diagnostic_item(
       value = "validation_info",
-      text = "Configured path: training/validation downstream GLM inference."
+      text = "Configured path: training/validation downstream GLM summaries."
     )
   } else if (has_inference) {
     items$two_stage_path <- .mk_diagnostic_item(
       value = if (has_boot) "bootstrap_plus_refit_full" else "refit_full",
       text = if (has_boot) {
-        "Configured path: bootstrap-stabilized weights with full-data downstream GLM inference."
+        "Configured path: bootstrap-stabilized weights with full-data downstream GLM summaries."
       } else {
-        "Configured path: full-data downstream GLM inference."
+        "Configured path: full-data downstream GLM summaries."
       }
     )
   }
@@ -310,16 +310,16 @@ compute_diagnostics.sglwqs_mids <- function(fit) {
     items$two_stage_path <- .mk_diagnostic_item(
       value = source_used,
       text = if (identical(source_used, "validation_info")) {
-        "Configured path: Rubin-pooled validation-split downstream GLM inference."
+        "Configured path: Rubin-pooled validation-split downstream GLM summaries."
       } else if (identical(source_used, "refit_info")) {
-        "Configured path: Rubin-pooled full-data downstream GLM inference."
+        "Configured path: Rubin-pooled full-data downstream GLM summaries."
       } else {
-        sprintf("Configured path: Rubin-pooled downstream inference from %s.", source_used)
+        sprintf("Configured path: Rubin-pooled downstream summaries from %s.", source_used)
       }
     )
     items$pooled_inference_source <- .mk_diagnostic_item(
       value = source_used,
-      text = sprintf("Pooled downstream inference source: %s.", source_used)
+      text = sprintf("Pooled downstream summary source: %s.", source_used)
     )
   }
 

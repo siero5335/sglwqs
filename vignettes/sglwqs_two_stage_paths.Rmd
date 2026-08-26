@@ -1,8 +1,8 @@
 ---
-title: "Two-Stage Inference Paths in sglwqs"
+title: "Two-Stage Analysis and Summary Paths in sglwqs"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Two-Stage Inference Paths in sglwqs}
+  %\VignetteIndexEntry{Two-Stage Analysis and Summary Paths in sglwqs}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,7 +20,8 @@ knitr::opts_chunk$set(
 `sglwqs` separates two related tasks:
 
 1. estimating sparse WQS weights and directional coefficients
-2. estimating downstream effect sizes for WQS composite indices
+2. fitting downstream models to fixed WQS composite indices and summarizing
+   their coefficients and uncertainty
 
 Those two layers can be combined in different ways through `bootstrap`,
 `validation`, and `refit`.
@@ -78,7 +79,7 @@ summary_inference(fit)
 plot_inference_results(fit)
 ```
 
-### 3. Full-data downstream GLM
+### 3. Full-data downstream GLM summaries
 
 Use this when `n` is too small for a validation split but you still want a
 second-stage GLM with fixed WQS indices.
@@ -154,15 +155,15 @@ equivalent to `refit = "validation"`.
 |----|-----------|-------|------------------------|-----------------------------|-----------------------|-----------------------|
 | No | No  | none       | Yes | No  | No  | No  |
 | No | Yes | none       | Yes | Bootstrap summaries | Bootstrap summaries | Bootstrap summaries |
-| No | No  | full       | Yes | No  | Downstream GLM | Downstream GLM |
+| No | No  | full       | Yes | No  | Full-sample GLM summaries | Full-sample GLM summaries |
 | No | No  | validation | Yes | No  | Conditional downstream GLM | Conditional downstream GLM |
-| No | Yes | full       | Yes | Bootstrap summaries | Downstream GLM | Downstream GLM |
+| No | Yes | full       | Yes | Bootstrap summaries | Full-sample GLM summaries | Full-sample GLM summaries |
 | No | Yes | validation | Yes | Bootstrap summaries | Conditional downstream GLM | Conditional downstream GLM |
 | Yes| No  | none       | Rubin-pooled | No  | No  | No  |
 | Yes| Yes | none       | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled bootstrap summaries | Rubin-pooled bootstrap summaries |
-| Yes| No  | full       | Rubin-pooled | No  | Rubin-pooled downstream GLM | Rubin-pooled downstream GLM |
+| Yes| No  | full       | Rubin-pooled | No  | Rubin-pooled GLM coefficient summaries | Rubin-pooled GLM coefficient summaries |
 | Yes| No  | validation | Rubin-pooled | No  | Rubin-pooled conditional downstream GLM | Rubin-pooled conditional downstream GLM |
-| Yes| Yes | full       | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled downstream GLM | Rubin-pooled downstream GLM |
+| Yes| Yes | full       | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled GLM coefficient summaries | Rubin-pooled GLM coefficient summaries |
 | Yes| Yes | validation | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled conditional downstream GLM | Rubin-pooled conditional downstream GLM |
 
 In practice, this means:
@@ -171,8 +172,8 @@ In practice, this means:
   returns uncertainty summaries.
 - `refit = "full"` is the natural small-sample alternative to a
   train/validation split.
-- `summary_inference()` and `plot_inference_results()` are designed so that the
-  active downstream or bootstrap-only path can be accessed through the same API.
+- `summary_inference()` and `plot_inference_results()` are retained as stable API
+  names for accessing the active downstream or bootstrap-only summary path.
 
 ## Diagnostics
 
@@ -185,5 +186,5 @@ compute_diagnostics(fit_mi)
 
 These diagnostics report observed model characteristics such as sample-to-
 predictor ratio, non-zero weight counts, bootstrap success rate, and active
-inference source. They are intended as factual summaries rather than automatic
+summary source. They are intended as factual summaries rather than automatic
 quality judgements.
