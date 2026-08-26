@@ -17,6 +17,7 @@ bootstrap_sgl(
   family,
   lambda,
   nfolds,
+  lambda_path = NULL,
   n_boot,
   seed,
   verbose,
@@ -26,6 +27,11 @@ bootstrap_sgl(
   cleanup_checkpoint = TRUE,
   stratified = TRUE,
   obs_weights = NULL,
+  boot_method = c("auto", "naive", "svrep"),
+  survey_design = NULL,
+  svrep_type = c("auto", "JK1", "JKn", "BRR", "Fay", "bootstrap", "subbootstrap",
+    "mrbbootstrap"),
+  svrep_args = list(),
   ...
 )
 }
@@ -53,6 +59,8 @@ bootstrap_sgl(
 \item{lambda}{Character or numeric.}
 
 \item{nfolds}{Integer.}
+
+\item{lambda_path}{Optional numeric lambda sequence passed to cv.sparsegl.}
 
 \item{n_boot}{Number of bootstrap iterations.}
 

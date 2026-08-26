@@ -4,15 +4,23 @@
 
 `sglwqs` is an R package for Weighted Quantile Sum (WQS) regression with Sparse Group Lasso. It evaluates mixture effects of multiple exposure variables and simultaneously estimates positive and negative direction weights.
 
-## Manuscript Revision Branch
+## Publication and Reproducibility
 
-For the Environment International Rev1 resubmission, the corresponding
-review branch is `paper/envint-revision-docs` (revision documentation commit
-`2fdd519`). Reviewers who need to inspect or reproduce the revision-specific
-package state can install that branch directly:
+The SGL-WQS methods article is published in *Environment International*:
+
+> Kawashima, T., Takaguchi, K., Suzuki, N., & Eguchi, A. (2026). Sparse group
+> lasso weighted quantile sum regression for analyzing chemical mixture
+> effects: bidirectional effect estimation with two-stage group-level
+> evaluation. *Environment International*, 110480.
+> [https://doi.org/10.1016/j.envint.2026.110480](https://doi.org/10.1016/j.envint.2026.110480)
+
+The DOI resolves to the publisher's open-access article page.
+The accepted-revision implementation is released as `v1.0.0`; the original
+`paper/envint-revision-docs` branch remains available for revision-history
+reproducibility.
 
 ```r
-remotes::install_github("siero5335/sglwqs@paper/envint-revision-docs")
+remotes::install_github("siero5335/sglwqs@v1.0.0")
 ```
 
 ## Features
@@ -22,7 +30,7 @@ remotes::install_github("siero5335/sglwqs@paper/envint-revision-docs")
 - **Bidirectional Weights**: Separately estimates positive and negative effects
 - **Grouping**: Applies penalties by variable groups (e.g., PCBs, Phthalates)
 - **Bootstrap**: Bootstrap aggregation for weight stabilization
-- **Train/Validation Split**: Data splitting for valid p-values
+- **Train/Validation Split**: Data splitting for exploratory held-out conditional association summaries
 - **Multiple Imputation (mice)**: Handles missing data with pooling via Rubin's rules
 - **Categorical Covariates**: Automatic dummy coding for factor variables
 - **Rich Visualization**: Multiple plot types for visualizing weights
@@ -44,7 +52,7 @@ install.packages("mice")                        # Multiple imputation
 
 ```r
 # Method 1: Install from tar.gz (recommended)
-install.packages("sglwqs_0.8.13.tar.gz", repos = NULL, type = "source")
+install.packages("sglwqs_1.0.0.tar.gz", repos = NULL, type = "source")
 
 # Method 2: Install from directory
 install.packages("/path/to/sglwqs", repos = NULL, type = "source")
@@ -52,8 +60,8 @@ install.packages("/path/to/sglwqs", repos = NULL, type = "source")
 # Method 3: Using devtools
 devtools::install("/path/to/sglwqs")
 
-# Method 4: From GitHub (after publication)
-# devtools::install_github("username/sglwqs")
+# Method 4: From GitHub
+devtools::install_github("siero5335/sglwqs")
 ```
 
 ### Using Without Installing
@@ -83,7 +91,7 @@ The main configuration choice is therefore not just "which model", but also
 | Quick prototype / point estimates only | `bootstrap = FALSE`, `refit = "none"` | Weights and sparse coefficients only |
 | Weight stability without downstream GLM | `bootstrap = TRUE`, `refit = "none"` | Bootstrap summaries for exposures, covariates, and WQS index sums |
 | Full-data downstream GLM (small `n`) | `refit = "full"` | In-sample downstream GLM inference |
-| Held-out downstream GLM | `validation = TRUE` | Validation-split downstream GLM inference |
+| Held-out downstream GLM | `validation = TRUE` | Exploratory validation-split downstream GLM summaries conditional on fixed training-estimated indices |
 | Missing data + downstream GLM | `sglwqs_mice(...)` with `refit = "full"` or `validation = TRUE` | Rubin-pooled downstream inference |
 | Missing data + bootstrap-only summaries | `sglwqs_mice(...)` with `bootstrap = TRUE`, `refit = "none"` | Rubin-pooled bootstrap summaries |
 
@@ -205,9 +213,12 @@ summary_inference(fit_boot)
 plot_inference_results(fit_boot)
 ```
 
-### Train/Validation Split (Inference)
+### Train/Validation Split (Exploratory Conditional Summaries)
 
-Split data to avoid post-selection inference issues and obtain valid p-values:
+Split data to separate training-stage index construction from exploratory
+held-out validation summaries. The resulting p-values are conditional on the
+fixed training-estimated indices and should not be interpreted as formal
+post-selection or confirmatory inference:
 
 ```r
 fit_val <- sglwqs(
@@ -220,11 +231,11 @@ fit_val <- sglwqs(
   seed = 123
 )
 
-# Check p-values (refer to group_results when groups are specified)
+# Check conditional validation-stage p-values (refer to group_results when groups are specified)
 summary_validation(fit_val)
 summary_inference(fit_val)
 
-# Example: p-values for PCBs
+# Example: conditional validation-stage p-values for PCBs
 fit_val$validation_info$group_results$PCBs$pos_pvalue
 fit_val$validation_info$group_results$PCBs$neg_pvalue
 ```
@@ -257,7 +268,7 @@ to disable this behavior.
 
 ### Full Refit and Complex Survey
 
-To explicitly request a full-sample refit, use `refit = "full"`. `obs_weights` are used in the sparse-group selection loss, and `quantile_weights` are used for quantile cutpoints. `refit_engine = "glm"` performs a standard model-based full refit and does not automatically incorporate survey weights. The intended inference route for NHANES in v1 is `refit_engine = "svyglm"`, where the user passes a pre-created `survey_design`.
+To explicitly request a full-sample refit, use `refit = "full"`. `obs_weights` are used in the sparse-group selection loss, and `quantile_weights` are used for quantile cutpoints. `refit_engine = "glm"` performs a standard model-based full refit and does not automatically incorporate survey weights. For NHANES or other complex survey analyses, the current survey-aware route is `refit_engine = "svyglm"`, where the user passes a pre-created `survey_design` built from the exact final analysis dataset. In survey mode, sampling weights from `survey_design` are used for weighted quantile cutpoints and are mean-normalized for the sparse-group selection loss; the downstream refit then uses the original survey design through `survey::svyglm()`. The downstream survey refit is supported, but survey-weighted sparse-group selection relies on the current `sparsegl` weighted backend and should be treated as backend-limited in this revision. Fits retain `selection_diagnostics` and warn when weighted selection returns all-zero exposure coefficients or selects a lambda value at the backend path boundary. These all-zero and boundary indicators are backend diagnostics rather than fit failures. For sensitivity checks, advanced users may pass an explicit backend sequence with experimental `lambda_path`; `lambda` still controls the coefficient extraction point.
 
 ```r
 # Weighted selection + full-sample glm refit
@@ -276,14 +287,26 @@ fit_svy <- sglwqs(
   X = nhanes_panel[, exposure_vars],
   y = nhanes_panel$hba1c,
   covariates = nhanes_panel[, c("age", "sex", "bmi")],
-  obs_weights = nhanes_panel$wt_subsample,
   refit = "full",
   refit_engine = "svyglm",
-  survey_design = nhanes_design
+  survey_design = nhanes_design,
+  analysis_id = nhanes_panel$analysis_id
 )
 ```
 
-In survey mode with `refit_engine = "svyglm"`, only `refit = "full"` is supported in v1. Using `validation = TRUE`, `bootstrap = TRUE`, or `parallel = TRUE` (which would expect survey-aware resampling) will raise explicit errors. Weighted point summaries are available through `validation_metrics()` and `calibrate()` using analysis weights, but weighted AUC is intentionally returned as `NA` rather than using an unvalidated approximation.
+In survey mode with `refit_engine = "svyglm"`, Gaussian and binomial full-data
+or validation-stage refits are supported. The analysis rows must align exactly
+with `survey_design`; supplying `analysis_id` is recommended for reproducible
+NHANES workflows. When `bootstrap = TRUE`, `boot_method = "auto"` uses survey
+replicate weights (`boot_method = "svrep"`), normalizes each replicate-weight
+column for sparse-group selection, and computes bootstrap standard errors with
+the survey design's `scale` and `rscales`. The default `svrep_type = "auto"`
+uses bootstrap replicate weights; specify `svrep_type = "JK1"` or `"JKn"` when
+jackknife replicates are intended. If ordinary row resampling is intended, set
+`boot_method = "naive"` explicitly; this warns because it ignores survey
+cluster/strata structure. Survey-aware predictive metrics and calibration
+summaries are not currently implemented and will error rather than returning
+ordinary unweighted summaries.
 
 ### Categorical Covariates
 
@@ -410,7 +433,7 @@ fit_mi <- sglwqs_mice(
 # View results
 summary(fit_mi)
 
-# Pooled p-values via Rubin's rules
+# Rubin-pooled conditional downstream summaries
 fit_mi$pooled$validation$wqs_pos$p_value
 fit_mi$pooled$validation$wqs_neg$p_value
 
@@ -447,7 +470,7 @@ plot_combined_results(fit_mi)
 | Function | Description |
 |----------|-------------|
 | `summary_bootstrap()` | Bootstrap summary (selection frequency, CI) |
-| `summary_validation()` | Validation summary (p-values, estimates) |
+| `summary_validation()` | Exploratory validation summary (conditional p-values, estimates) |
 | `get_inference_table()` | Comprehensive inference table for publications |
 
 ### Multiple Imputation Functions
@@ -494,8 +517,8 @@ The return value of `sglwqs()` includes:
   - `selection_freq_pos`, `selection_freq_neg`: Selection frequencies
   - `se_pos_coef`, `se_neg_coef`: Standard errors of coefficients
 - `validation_info`: Validation information (when validation=TRUE)
-  - `group_results`: Estimates, SE, and p-values by group (when groups are specified)
-  - `wqs_pos_pvalue`, `wqs_neg_pvalue`: Overall WQS p-values (when groups are not specified)
+  - `group_results`: Estimates, SE, and conditional p-values by group (when groups are specified)
+  - `wqs_pos_pvalue`, `wqs_neg_pvalue`: Overall conditional WQS p-values (when groups are not specified)
   - `wqs_pos_estimate`, `wqs_neg_estimate`: Overall WQS estimates (when groups are not specified)
 
 ## Interpretation of Weights and Indices
@@ -545,6 +568,7 @@ MIT License
 
 ## References
 
+- Kawashima, T., Takaguchi, K., Suzuki, N., & Eguchi, A. (2026). Sparse group lasso weighted quantile sum regression for analyzing chemical mixture effects: bidirectional effect estimation with two-stage group-level evaluation. *Environment International*, 110480. https://doi.org/10.1016/j.envint.2026.110480
 - Simon, N., Friedman, J., Hastie, T., & Tibshirani, R. (2013). A sparse-group lasso. *Journal of Computational and Graphical Statistics*.
 - Carrico, C., Gennings, C., Wheeler, D. C., & Factor-Litvak, P. (2015). Characterization of weighted quantile sum regression for highly correlated data in a risk analysis setting. *Journal of Agricultural, Biological, and Environmental Statistics*.
 - Keil, A. P., et al. (2020). A quantile-based g-computation approach to addressing the effects of exposure mixtures. *Environmental Health Perspectives*.

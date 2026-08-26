@@ -31,7 +31,7 @@ A one-row data frame with performance metrics.
 Computes predictive performance metrics on validation or external data.
 }
 \details{
-For v1, survey-aware predictive metrics are not implemented. Objects fitted
+Survey-aware predictive metrics are not currently implemented. Objects fitted
 with survey mode (\code{refit_engine = "svyglm"}) will error rather than
 returning ordinary unweighted metrics.
 }

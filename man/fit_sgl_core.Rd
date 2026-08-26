@@ -17,6 +17,7 @@ fit_sgl_core(
   family,
   lambda,
   nfolds,
+  lambda_path = NULL,
   obs_weights = NULL,
   ...
 )
@@ -45,6 +46,8 @@ fit_sgl_core(
 \item{lambda}{Character or numeric.}
 
 \item{nfolds}{Integer.}
+
+\item{lambda_path}{Optional numeric lambda sequence passed to cv.sparsegl.}
 
 \item{obs_weights}{Optional numeric observation weights for selection loss.}
 

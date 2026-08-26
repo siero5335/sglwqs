@@ -151,8 +151,10 @@ plot_combined_results(fit, top_n = 5)
 
 | Group | Direction | Expected Result |
 |-------|-----------|-----------------|
-| PCBs | Positive | Significant (p < 0.05) |
-| Metals | Negative | Significant (p < 0.05) |
-| PFASs | Either | Not significant |
+| PCBs | Positive | Conditional validation summary expected to be small (p < 0.05) |
+| Metals | Negative | Conditional validation summary expected to be small (p < 0.05) |
+| PFASs | Either | Conditional validation summary expected not to be small |
 
-The method correctly identifies which chemicals have positive, negative, or no effects.
+In this simulated example with known effects, the fitted summaries can be
+checked against the positive, negative, and null groups used to generate the
+data.

@@ -1,4 +1,14 @@
-# sglwqs 0.8.13.9001
+# sglwqs 1.0.0
+
+## Publication
+
+* The SGL-WQS methods article is now published in *Environment International*:
+  Kawashima, Takaguchi, Suzuki, and Eguchi (2026), article 110480,
+  doi:10.1016/j.envint.2026.110480. This release incorporates the accepted
+  manuscript revision implementation previously maintained on
+  `paper/envint-revision-docs`.
+* This is the first stable public release of the package API associated with
+  the published methods article.
 
 ## Bug fixes
 
@@ -25,6 +35,36 @@
   imputation fits also retain imputation-level error messages.
 * Added `vcov.sglwqs()` for downstream refit and bootstrap-only covariance
   extraction.
+* Complex-survey support for Gaussian and binomial refits now
+  uses `survey_design` sampling weights for quantile cutpoints, mean-normalized
+  design weights for sparse-group selection, and the original survey design for
+  downstream `survey::svyglm()` inference. Survey mode validates row alignment
+  via `analysis_id` or stable row names and supports full-data and
+  validation-stage refits. The downstream survey refit is supported, while
+  survey-weighted sparse-group selection remains limited by the current
+  `sparsegl` weighted backend; fits now retain selection diagnostics and warn
+  when weighted selection returns all-zero exposure coefficients or selects a
+  lambda value at the edge of the backend path. These all-zero and boundary
+  indicators are backend diagnostics, not fit failures. An experimental
+  `lambda_path` argument allows sensitivity checks with an explicit backend
+  lambda sequence while leaving `lambda` as the coefficient extraction point.
+* Survey-aware bootstrap now supports `boot_method = "svrep"` for replicate
+  weight resampling. With `survey_design`, `boot_method = "auto"` chooses
+  survey replicate weights, normalizes each replicate column for sparse-group
+  selection, and computes bootstrap standard errors with the survey design's
+  `scale` and `rscales`. `svrep_type = "auto"` uses bootstrap replicate
+  weights; jackknife replicates remain available by explicitly setting
+  `svrep_type = "JK1"` or `"JKn"`. `boot_method = "naive"` remains available
+  as an explicit row-resampling fallback and warns when it ignores survey
+  cluster/strata structure.
+* Revision follow-up: survey bootstrap summaries now use the stored
+  full-sample replicate center and survey-scale standard errors even when
+  bootstrap matrices are retained, avoiding ordinary percentile summaries for
+  survey replicate matrices.
+* Revision follow-up: validation-demo wording now avoids the phrase "valid
+  inference", and survey-mode alignment checks now reject empty analysis IDs,
+  compare stable analysis row names against `analysis_id`, and carry stable
+  row-name IDs into downstream `svyglm` refits.
 
 # sglwqs 0.8.13
 

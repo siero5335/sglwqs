@@ -73,6 +73,38 @@ compute_diagnostics.sglwqs <- function(fit) {
     )
   }
 
+  sel_diag <- fit$selection_diagnostics
+  if (!is.null(sel_diag)) {
+    items$selection_lambda_path <- .mk_diagnostic_item(
+      value = sel_diag$lambda_path_length %||% NA_integer_,
+      text = sprintf(
+        "Selection lambda path: length = %s, range = [%s, %s], selected = %s%s",
+        sel_diag$lambda_path_length %||% NA_integer_,
+        signif(sel_diag$lambda_path_min %||% NA_real_, 4),
+        signif(sel_diag$lambda_path_max %||% NA_real_, 4),
+        signif(sel_diag$selected_lambda %||% NA_real_, 4),
+        if (isTRUE(sel_diag$selected_lambda_at_path_boundary)) " (path boundary)" else ""
+      )
+    )
+    items$selection_exposure_nonzero <- .mk_diagnostic_item(
+      value = (sel_diag$nonzero_positive_coef %||% 0L) +
+        (sel_diag$nonzero_negative_coef %||% 0L),
+      text = sprintf(
+        "Selection non-zero exposure coefficients: positive = %d, negative = %d; weight sums: positive = %.3f, negative = %.3f",
+        sel_diag$nonzero_positive_coef %||% 0L,
+        sel_diag$nonzero_negative_coef %||% 0L,
+        sel_diag$positive_weight_sum %||% NA_real_,
+        sel_diag$negative_weight_sum %||% NA_real_
+      )
+    )
+    if (isTRUE(sel_diag$all_zero_exposure)) {
+      items$selection_all_zero_exposure <- .mk_diagnostic_item(
+        value = TRUE,
+        text = "Selection returned all-zero exposure coefficients; downstream WQS exposure indices may be absent."
+      )
+    }
+  }
+
   overlap_n <- sum((fit$pos_coef > 0) & (fit$neg_coef > 0), na.rm = TRUE)
   if (overlap_n > 0) {
     items$exposure_directional_overlap <- .mk_diagnostic_item(

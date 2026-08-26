@@ -1,8 +1,13 @@
 ^\.DS_Store$
+^\.git$
+^\.git/
 ^\.claude$
 ^\.claude/
 ^\.github$
 ^\.github/
+^CITATION\.cff$
+^dev_porting_instructions_rev1_survey_lambda_docs\.md$
+^sglwqs_.*\.(tar\.gz|tgz)$
 ^sglwqs\.Rcheck$
 ^sglwqs\.Rcheck/
 ^build$

@@ -99,7 +99,9 @@ Key outputs:
 
 ### 4. Validation-based downstream GLM
 
-Use this when you want held-out downstream inference.
+Use this when you want exploratory held-out downstream summaries. These
+validation-stage p-values are conditional on the WQS indices estimated in the
+training set; they are not formal post-selection or confirmatory inference.
 
 ```{r}
 fit <- sglwqs(
@@ -153,15 +155,15 @@ equivalent to `refit = "validation"`.
 | No | No  | none       | Yes | No  | No  | No  |
 | No | Yes | none       | Yes | Bootstrap summaries | Bootstrap summaries | Bootstrap summaries |
 | No | No  | full       | Yes | No  | Downstream GLM | Downstream GLM |
-| No | No  | validation | Yes | No  | Downstream GLM | Downstream GLM |
+| No | No  | validation | Yes | No  | Conditional downstream GLM | Conditional downstream GLM |
 | No | Yes | full       | Yes | Bootstrap summaries | Downstream GLM | Downstream GLM |
-| No | Yes | validation | Yes | Bootstrap summaries | Downstream GLM | Downstream GLM |
+| No | Yes | validation | Yes | Bootstrap summaries | Conditional downstream GLM | Conditional downstream GLM |
 | Yes| No  | none       | Rubin-pooled | No  | No  | No  |
 | Yes| Yes | none       | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled bootstrap summaries | Rubin-pooled bootstrap summaries |
 | Yes| No  | full       | Rubin-pooled | No  | Rubin-pooled downstream GLM | Rubin-pooled downstream GLM |
-| Yes| No  | validation | Rubin-pooled | No  | Rubin-pooled downstream GLM | Rubin-pooled downstream GLM |
+| Yes| No  | validation | Rubin-pooled | No  | Rubin-pooled conditional downstream GLM | Rubin-pooled conditional downstream GLM |
 | Yes| Yes | full       | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled downstream GLM | Rubin-pooled downstream GLM |
-| Yes| Yes | validation | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled downstream GLM | Rubin-pooled downstream GLM |
+| Yes| Yes | validation | Rubin-pooled | Rubin-pooled bootstrap summaries | Rubin-pooled conditional downstream GLM | Rubin-pooled conditional downstream GLM |
 
 In practice, this means:
 

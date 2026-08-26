@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article below."
+title: "sglwqs: Weighted Quantile Sum Regression with Sparse Group Lasso"
+type: software
+authors:
+  - family-names: Eguchi
+    given-names: Akifumi
+    orcid: "https://orcid.org/0000-0001-5858-8132"
+version: 1.0.0
+date-released: 2026-08-26
+license: MIT
+repository-code: "https://github.com/siero5335/sglwqs"
+url: "https://github.com/siero5335/sglwqs"
+preferred-citation:
+  type: article
+  title: "Sparse group lasso weighted quantile sum regression for analyzing chemical mixture effects: bidirectional effect estimation with two-stage group-level evaluation"
+  authors:
+    - family-names: Kawashima
+      given-names: Takayuki
+    - family-names: Takaguchi
+      given-names: Kohki
+    - family-names: Suzuki
+      given-names: Norimichi
+    - family-names: Eguchi
+      given-names: Akifumi
+      orcid: "https://orcid.org/0000-0001-5858-8132"
+  journal: Environment International
+  year: 2026
+  doi: "10.1016/j.envint.2026.110480"
+  url: "https://doi.org/10.1016/j.envint.2026.110480"

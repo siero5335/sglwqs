@@ -282,7 +282,7 @@ augment.sglwqs <- function(x, data = NULL, newdata = NULL, covariates = NULL,
 #' @param threshold Classification threshold for binomial metrics (default: 0.5).
 #'
 #' @details
-#' For v1, survey-aware predictive metrics are not implemented. Objects fitted
+#' Survey-aware predictive metrics are not currently implemented. Objects fitted
 #' with survey mode (\code{refit_engine = "svyglm"}) will error rather than
 #' returning ordinary unweighted metrics.
 #'
@@ -314,7 +314,7 @@ validation_metrics <- function(object, newdata = NULL, outcome = NULL,
   }
   if (isTRUE(object$survey_mode)) {
     stop(
-      "Survey-aware predictive metrics are not yet implemented for survey mode in v1.",
+      "Survey-aware predictive metrics are not yet implemented for survey mode.",
       call. = FALSE
     )
   }
@@ -408,7 +408,7 @@ print.sglwqs_validation_metrics <- function(x, ...) {
 #' @param ... Additional arguments passed to methods.
 #'
 #' @details
-#' For v1, survey-aware calibration is not implemented. Objects fitted with
+#' Survey-aware calibration is not currently implemented. Objects fitted with
 #' survey mode (\code{refit_engine = "svyglm"}) will error rather than
 #' returning ordinary unweighted calibration summaries.
 #'
@@ -448,7 +448,7 @@ calibrate.sglwqs <- function(object, newdata = NULL, outcome = NULL,
   }
   if (isTRUE(object$survey_mode)) {
     stop(
-      "Survey-aware calibration is not yet implemented for survey mode in v1.",
+      "Survey-aware calibration is not yet implemented for survey mode.",
       call. = FALSE
     )
   }
